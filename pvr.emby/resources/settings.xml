@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings>
+  <!-- general -->
+  <category label="30100">
+    <setting id="host" type="text" label="30000" default="192.168.1.2" />
+    <setting id="webport" type="number" label="30001" default="8096"/>
+    <setting id="username" type="text" label="30002" default="" />
+    <setting id="password" type="text" label="30003" default="" option="hidden" />
+  </category>  
+</settings>
