@@ -127,11 +127,6 @@ public:
   PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
   PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount);
 
-  /* Groups */
-  unsigned int GetChannelGroupsAmount(void);  
-  PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio);
-  PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
-
   /* Recordings */
   PVR_ERROR GetRecordings(ADDON_HANDLE handle);
   bool GetRecordingFromLocation(std::string strRecordingFolder);
@@ -167,9 +162,8 @@ private:
   * \brief Get a channel list from Emby Device via REST interface
   * \param id The channel list id
   */
-  int RESTGetChannelList(int id, Json::Value& response);
+  int RESTGetChannelList(Json::Value& response);
   int RESTGetRecordings(Json::Value& response);
-  int RESTGetChannelLists(Json::Value& response);
   int RESTGetTimer(Json::Value& response);  
   int RESTGetEpg(int id, time_t iStart, time_t iEnd, Json::Value& response);
   int RESTGetStorage(Json::Value& response);
@@ -182,14 +176,12 @@ private:
   void TransferChannels(ADDON_HANDLE handle);
   void TransferRecordings(ADDON_HANDLE handle);
   void TransferTimer(ADDON_HANDLE handle); 
-  void TransferGroups(ADDON_HANDLE handle);  
   bool replace(std::string& str, const std::string& from, const std::string& to);
   bool IsRecordFolderSet(std::string& partitionId);
-  std::string GetPreviewParams(ADDON_HANDLE handle, Json::Value entry);
-  std::string GetPreviewUrl(std::string params);
+  std::string GetStreamUrl(std::string params);
   std::string GetTranscodeProfileValue();
   std::string GetStid(int id);
-  std::string GetChannelLogo(Json::Value entry);
+  std::string GetChannelLogo(std::string params);
   std::string GetShortName(Json::Value entry);
   bool Login(void);
   
@@ -213,14 +205,12 @@ private:
   int                               m_iPortWeb;    
   int                               m_iNumChannels;
   int                               m_iNumRecordings;  
-  int                               m_iNumGroups;  
   std::string                       m_strPreviewMode;
   std::string                       m_strStid;
   bool                              m_bUpdating;  
   
   std::vector<EmbyEpgChannel>       m_epg;    
   std::vector<EmbyChannel>          m_channels;  
-  std::vector<EmbyChannelGroup>     m_groups;  
   std::vector<EmbyRecording>        m_recordings; 
   std::vector<EmbyTimer>            m_timer;
   std::vector<std::string>			m_partitions;

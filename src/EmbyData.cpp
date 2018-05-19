@@ -15,8 +15,7 @@
 
 #define URI_REST_AUTHENTICATEBYNAME "/Users/AuthenticateByName"
 #define URI_REST_CONFIG         "/TVC/free/data/config"
-#define URI_REST_CHANNELS       "/TVC/user/data/tv/channels"
-#define URI_REST_CHANNELLISTS   "/TVC/user/data/tv/channellists"
+#define URI_REST_CHANNELS       "/LiveTv/Channels"
 #define URI_REST_RECORDINGS     "/TVC/user/data/gallery/video"
 #define URI_REST_TIMER          "/TVC/user/data/recordingtasks"
 #define URI_REST_EPG            "/TVC/user/data/epg"
@@ -47,7 +46,6 @@ Emby::Emby() :m_strBaseUrl(""), m_strStid(""), m_strToken(""), m_strPreviewMode(
   m_bUpdating = false;  
   m_iNumChannels = 0;
   m_iNumRecordings = 0;  
-  m_iNumGroups = 0;  
   m_strUsername = g_strUsername;
   m_strPassword = g_strPassword;
 }
@@ -70,7 +68,6 @@ Emby::~Emby()
 
   XBMC->Log(LOG_DEBUG, "%s Removing internal channels list...", __FUNCTION__);
   m_channels.clear();
-  m_groups.clear();
   m_epg.clear();
   m_recordings.clear();
   m_timer.clear();
@@ -148,14 +145,14 @@ PVR_ERROR Emby::GetChannels(ADDON_HANDLE handle, bool bRadio)
 
   Json::Value data;
   int retval;
-  retval = RESTGetChannelList(0, data); // all channels
-
+  retval = RESTGetChannelList(data);
   if (retval < 0)
   {
     XBMC->Log(LOG_ERROR, "No channels available.");
     return PVR_ERROR_SERVER_ERROR;
   }
   
+  data = data["Items"];
   for (unsigned int index = 0; index < data.size(); ++index)
   {
     EmbyChannel channel;
@@ -163,31 +160,15 @@ PVR_ERROR Emby::GetChannels(ADDON_HANDLE handle, bool bRadio)
 
     entry = data[index];
     
-    channel.iUniqueId = entry["Id"].asInt();
-    channel.strChannelName = entry["DisplayName"].asString();  
 
-    if (entry["MajorChannelNo"] != Json::nullValue)
-    {
-      channel.iChannelNumber = entry["MajorChannelNo"].asInt();
-    }	
-    else 
-    {
-      channel.iChannelNumber = entry["Id"].asInt();
-    }
-    if (entry["MinorChannelNo"] != Json::nullValue)
-    {
-      channel.iSubChannelNumber = entry["MinorChannelNo"].asInt();
-    }
-    else {
-      channel.iSubChannelNumber = 0;
-    }
-
+    channel.iUniqueId = stoi(entry["Number"].asString());
+    channel.strChannelName = entry["Name"].asString();  
+    channel.iChannelNumber = stoi(entry["ChannelNumber"].asString());
+    channel.iSubChannelNumber = 0;
     channel.iEncryptionSystem = 0;	
-    std::string params;
-    
-    params = GetPreviewParams(handle, entry);
-    channel.strStreamURL = GetPreviewUrl(params);    
-    channel.strLogoPath = GetChannelLogo(entry);
+
+    channel.strStreamURL = GetStreamUrl(entry["Id"].asString());    
+    channel.strLogoPath = GetChannelLogo(entry["Id"].asString());
 
     m_iNumChannels++;
     m_channels.push_back(channel);
@@ -196,7 +177,7 @@ PVR_ERROR Emby::GetChannels(ADDON_HANDLE handle, bool bRadio)
   }
   
   if (m_channels.size() > 0) {
-	std::sort(m_channels.begin(), m_channels.end());
+	  std::sort(m_channels.begin(), m_channels.end());
   }
 	  
   XBMC->QueueNotification(QUEUE_INFO, "%d channels loaded.", m_channels.size());
@@ -216,9 +197,9 @@ void Emby::TransferChannels(ADDON_HANDLE handle)
     PVR_CHANNEL tag;
     memset(&tag, 0, sizeof(PVR_CHANNEL));
     tag.iUniqueId = channel.iUniqueId;
-	tag.iChannelNumber = channel.iChannelNumber;
-	tag.iSubChannelNumber = channel.iSubChannelNumber;
-	tag.iEncryptionSystem = channel.iEncryptionSystem;	
+    tag.iChannelNumber = channel.iChannelNumber;
+    tag.iSubChannelNumber = channel.iSubChannelNumber;
+    tag.iEncryptionSystem = channel.iEncryptionSystem;	
     strncpy(tag.strChannelName, channel.strChannelName.c_str(), sizeof(tag.strChannelName));
     strncpy(tag.strInputFormat, m_strPreviewMode.c_str(), sizeof(tag.strInputFormat));
     strncpy(tag.strIconPath, channel.strLogoPath.c_str(), sizeof(tag.strIconPath));
@@ -229,7 +210,6 @@ void Emby::TransferChannels(ADDON_HANDLE handle)
 
 bool Emby::LoadChannels()
 {
-  PVR->TriggerChannelGroupsUpdate();
   PVR->TriggerChannelUpdate();
   return true;  
 }
@@ -256,137 +236,7 @@ PVR_ERROR Emby::GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED
   return PVR_ERROR_NO_ERROR;
 }
 
-/************************************************************/
-/** Groups  */
 
-unsigned int Emby::GetChannelGroupsAmount()
-{
-  return m_iNumGroups;
-}
-
-PVR_ERROR Emby::GetChannelGroups(ADDON_HANDLE handle, bool bRadio) 
-{
-  m_iNumGroups = 0;
-  m_groups.clear();
-
-  Json::Value data;
-  int retval;
-  retval = RESTGetChannelLists(data);
-
-  if (retval < 0)
-  {
-    XBMC->Log(LOG_ERROR, "No channels available.");
-    return PVR_ERROR_SERVER_ERROR;
-  }
-
-  for (unsigned int index = 0; index < data.size(); ++index)
-  { 
-    EmbyChannelGroup group;
-    Json::Value entry;
-
-    entry = data[index];
-    int iChannelListId = entry["Id"].asInt();
-
-    Json::Value channellistData;    
-    retval = RESTGetChannelList(iChannelListId, channellistData);
-	if (retval > 0) {
-		Json::Value channels = channellistData["Channels"];
-
-		for (unsigned int i = 0; i < channels.size(); ++i) {
-
-			Json::Value channel;
-
-			channel = channels[i];
-			group.members.push_back(channel["Id"].asInt());
-		}
-	}
-	
-    group.iGroupId = iChannelListId;
-    group.strGroupName = entry["DisplayName"].asString();
-    group.bRadio = false;
-        
-    m_groups.push_back(group);
-    m_iNumGroups++;
-
-    XBMC->Log(LOG_DEBUG, "%s loaded channelist entry '%s'", __FUNCTION__, group.strGroupName.c_str());
-  }
-
-  XBMC->QueueNotification(QUEUE_INFO, "%d groups loaded.", m_groups.size());
-
-  TransferGroups(handle);
-
-  return PVR_ERROR_NO_ERROR;
-}
-
-void Emby::TransferGroups(ADDON_HANDLE handle)
-{
-  for (unsigned int i = 0; i<m_groups.size(); i++)
-  {
-    std::string strTmp;
-    EmbyChannelGroup &group = m_groups.at(i);
-  
-    PVR_CHANNEL_GROUP tag;
-    memset(&tag, 0, sizeof(PVR_CHANNEL_GROUP));
-    tag.bIsRadio = false;
-    tag.iPosition = 0; // groups default order, unused
-    strncpy(tag.strGroupName, group.strGroupName.c_str(), sizeof(tag.strGroupName));
-    
-    PVR->TransferChannelGroup(handle, &tag);
-  }
-}
-
-PVR_ERROR Emby::GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
-{
-  std::string strTmp = group.strGroupName;
-  for (unsigned int i = 0; i < m_groups.size(); i++)
-  {
-    EmbyChannelGroup &g = m_groups.at(i);
-    if (!strTmp.compare(g.strGroupName)) 
-    {
-      for (unsigned int i = 0; i<g.members.size(); i++) 
-      {
-        PVR_CHANNEL_GROUP_MEMBER tag;
-        memset(&tag, 0, sizeof(PVR_CHANNEL_GROUP_MEMBER));
-
-        tag.iChannelUniqueId = g.members[i];
-        strncpy(tag.strGroupName, g.strGroupName.c_str(), sizeof(tag.strGroupName));
-        
-        PVR->TransferChannelGroupMember(handle, &tag);
-      }      
-    }      
-  }
-
-  return PVR_ERROR_NO_ERROR;
-}
-
-int Emby::RESTGetChannelLists(Json::Value& response)
-{
-  int retval;
-  cRest rest;
-
-  std::string strUrl = m_strBaseUrl + URI_REST_CHANNELLISTS;
-  retval = rest.Get(strUrl, "", response);
-
-  if (retval >= 0)
-  {
-    if (response.type() == Json::arrayValue)
-    {
-      int size = response.size();
-      return size;
-    }
-    else
-    {
-      XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
-      return -1;
-    }
-  }
-  else
-  {
-    XBMC->Log(LOG_DEBUG, "Request Recordings failed. Return value: %i\n", retval);
-  }
-
-  return retval;
-}
 
 /************************************************************/
 /** Recordings  */
@@ -412,8 +262,8 @@ PVR_ERROR Emby::GetRecordings(ADDON_HANDLE handle)
 		recording.iDuration = static_cast<time_t>(entry["Duration"].asDouble() / 1000); // in seconds
 		recording.iLastPlayedPosition = static_cast<int>(entry["Resume"].asDouble() / 1000); // in seconds
 		
-		std::string params = GetPreviewParams(handle, entry);
-		recording.strStreamURL = GetPreviewUrl(params);
+		//std::string params = GetPreviewParams(handle, entry);
+		//recording.strStreamURL = GetPreviewUrl(params);
 		m_iNumRecordings++;
 		m_recordings.push_back(recording);
 
@@ -788,23 +638,6 @@ int Emby::RESTGetEpg(int id, time_t iStart, time_t iEnd, Json::Value& response)
   return retval;
 }
 
-
-std::string Emby::GetPreviewParams(ADDON_HANDLE handle, Json::Value entry)
-{ 
-  std::string strStid = GetStid(handle->dataIdentifier);
-  std::string strTmp;
-  if (entry["File"].isString())
-  {  // Gallery entry
-    strTmp= StringUtils::Format("stid=%s&galleryid=%.0f&file=%s&profile=%s", strStid.c_str(), entry["Id"].asDouble(), URLEncodeInline(entry["File"].asString()).c_str(), GetTranscodeProfileValue().c_str());
-    return strTmp;
-  }  
-  
-  // channel entry
-  strTmp= StringUtils::Format("channel=%i&mode=%s&profile=%s&stid=%s", entry["Id"].asInt(), m_strPreviewMode.c_str(), GetTranscodeProfileValue().c_str(), strStid.c_str());
-  return strTmp;
-  
-}
-
 std::string Emby::GetTranscodeProfileValue()
 {
   std::string strProfile;
@@ -820,10 +653,10 @@ std::string Emby::GetTranscodeProfileValue()
   return strProfile;
 }
 
-std::string Emby::GetPreviewUrl(std::string params)
+std::string Emby::GetStreamUrl(std::string params)
 {
   std::string strTmp;
-  strTmp= StringUtils::Format("%s/TVC/Preview?%s", m_strBaseUrl.c_str(), params.c_str());
+  strTmp = StringUtils::Format("%s/Videos/%s/stream?static=true", m_strBaseUrl.c_str(), params.c_str());
   return strTmp;
 }
 
@@ -837,11 +670,11 @@ std::string Emby::GetStid(int defaultStid)
   return m_strStid;
 }
 
-std::string Emby::GetChannelLogo(Json::Value entry)
+std::string Emby::GetChannelLogo(std::string params)
 {
-  std::string strNameParam;
-  strNameParam= StringUtils::Format("%s/TVC/Resource?type=1&default=emptyChannelLogo&name=%s", m_strBaseUrl.c_str(), URLEncodeInline(GetShortName(entry)).c_str());
-  return strNameParam;
+  std::string strTmp;
+  strTmp = StringUtils::Format("%s/Items/%s/Images/Primary", m_strBaseUrl.c_str(), params.c_str());
+  return strTmp;
 }
 
 std::string Emby::GetShortName(Json::Value entry)
@@ -1065,56 +898,32 @@ long long Emby::LengthLiveStream(void)
 * \brief Get a channel list from Emby Device via REST interface
 * \param id The channel list id
 */
-int Emby::RESTGetChannelList(int id, Json::Value& response)
+int Emby::RESTGetChannelList(Json::Value& response)
 {
   XBMC->Log(LOG_DEBUG, "%s - get channel list entries via REST interface", __FUNCTION__);
   int retval = -1;
   cRest rest;  
 
-  if (id == 0) // all channels
+
+  std::string strUrl = m_strBaseUrl + URI_REST_CHANNELS;
+  retval = rest.Get(strUrl, "", response,m_strToken);
+  if (retval >= 0)
   {
-	  std::string strUrl = m_strBaseUrl + URI_REST_CHANNELS;
-	  retval = rest.Get(strUrl, "?available=1", response);
-    if (retval >= 0)
+    if (response.type() == Json::objectValue)
     {
-      if (response.type() == Json::arrayValue)
-      {
-        return response.size();
-      }
-      else
-      {
-        XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
-        return -1;
-      }
+      return response["Items"].size();
     }
     else
     {
-      XBMC->Log(LOG_DEBUG, "Request Channel List failed. Return value: %i\n", retval);
+      XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
+      return -1;
     }
   }
-  else if (id > 0) 
+  else
   {
-    char url[255];
-	sprintf(url, "%s%s/%i", m_strBaseUrl.c_str(), URI_REST_CHANNELLISTS, id);	
-	
-	retval = rest.Get(url, "?available=1", response);
-    if (retval >= 0)
-    {
-      if (response.type() == Json::objectValue)
-      {
-        return response.size();
-      }
-      else
-      {
-        XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::objectValue\n");
-        return -1;
-      }
-    }
-    else
-    {
-      XBMC->Log(LOG_DEBUG, "Request Channel List failed. Return value: %i\n", retval);
-    }
+    XBMC->Log(LOG_DEBUG, "Request Channel List failed. Return value: %i\n", retval);
   }
+
   
   return retval;
 }

@@ -285,7 +285,7 @@ PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
   pCapabilities->bSupportsEPG                 = true;
   pCapabilities->bSupportsTV                  = true;
   pCapabilities->bSupportsRadio               = false;
-  pCapabilities->bSupportsChannelGroups       = true;
+  pCapabilities->bSupportsChannelGroups       = false;
   pCapabilities->bSupportsRecordings          = true;
   pCapabilities->bSupportsRecordingsUndelete  = false;
   pCapabilities->bSupportsTimers              = true;
@@ -433,32 +433,7 @@ PVR_ERROR AddTimer(const PVR_TIMER &timer) {
 
 }
 
-int GetChannelGroupsAmount(void)
-{
-  if (!EmbyData || !EmbyData->IsConnected())
-    return PVR_ERROR_SERVER_ERROR;
 
-  return EmbyData->GetChannelGroupsAmount();
-}
-
-PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio) 
-{ 
-  if (!EmbyData || !EmbyData->IsConnected())
-    return PVR_ERROR_SERVER_ERROR;
-
-  return EmbyData->GetChannelGroups(handle, bRadio);
-}
-
-PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
-{
-  if (group.bIsRadio)
-    return PVR_ERROR_NO_ERROR;
-
-  if (!EmbyData || !EmbyData->IsConnected())
-    return PVR_ERROR_SERVER_ERROR;
-
-  return EmbyData->GetChannelGroupMembers(handle, group);
-}
 
 PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount) {
   if (!EmbyData || !EmbyData->IsConnected())
@@ -475,6 +450,9 @@ PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED
 }
 
 /** UNUSED API FUNCTIONS */
+int GetChannelGroupsAmount(void) { return PVR_ERROR_NOT_IMPLEMENTED; }
+PVR_ERROR GetChannelGroups(ADDON_HANDLE handle, bool bRadio) { return PVR_ERROR_NOT_IMPLEMENTED; }
+PVR_ERROR GetChannelGroupMembers(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR SignalStatus(PVR_SIGNAL_STATUS &signalStatus) { return PVR_ERROR_NO_ERROR; }
 PVR_ERROR GetStreamProperties(PVR_STREAM_PROPERTIES* pProperties) { return PVR_ERROR_NOT_IMPLEMENTED; }
 void DemuxAbort(void) { return; }

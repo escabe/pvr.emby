@@ -111,13 +111,19 @@ int httpRequest(const std::string& command, const std::string& arguments, const 
 			while (XBMC->ReadFileString(hFile, buffer, 1024))
 				result.append(buffer);
 			json_response = result;
-			return 0;
 			XBMC->CloseFile(hFile);
+			return 0;
 		}
 	}
 	else {	// GET http request	
 		strUrl += arguments;
-		void* fileHandle = XBMC->OpenFile(strUrl.c_str(), 0);
+
+		void* fileHandle = XBMC->CURLCreate(strUrl.c_str());
+		XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"Kodi\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"1.0.0.0\"");
+		if (!token.empty())
+			XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
+		XBMC->CURLOpen(fileHandle,0);
+
 		if (fileHandle)
 		{
 			std::string result;
