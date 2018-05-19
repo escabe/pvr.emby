@@ -98,7 +98,7 @@ int httpRequest(const std::string& command, const std::string& arguments, const 
 		void* hFile = XBMC->CURLCreate(strUrl.c_str());
 		std::string data = base64_encode(arguments.c_str(),arguments.length());
 		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_PROTOCOL,"postdata",data.c_str());
-		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"Kodi\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"1.0.0.0\"");
+		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"KodiPVR\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"0.1.0\"");
 		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Content-Type","application/json");
 		if (!token.empty())
 			XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
@@ -119,7 +119,7 @@ int httpRequest(const std::string& command, const std::string& arguments, const 
 		strUrl += arguments;
 
 		void* fileHandle = XBMC->CURLCreate(strUrl.c_str());
-		XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"Kodi\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"1.0.0.0\"");
+		XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"KodiPVR\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"0.1.0\"");
 		if (!token.empty())
 			XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
 		XBMC->CURLOpen(fileHandle,0);

@@ -17,7 +17,7 @@
 #define URI_REST_CONFIG         "/TVC/free/data/config"
 #define URI_REST_CHANNELS       "/LiveTv/Channels"
 #define URI_REST_RECORDINGS     "/TVC/user/data/gallery/video"
-#define URI_REST_TIMER          "/TVC/user/data/recordingtasks"
+#define URI_REST_TIMER          "/LiveTV/Timers"
 #define URI_REST_EPG            "/LiveTv/Programs"
 #define URI_REST_STORAGE        "/TVC/user/data/storage"
 #define URI_REST_FOLDER	        "/TVC/user/data/folder"
@@ -161,7 +161,7 @@ PVR_ERROR Emby::GetChannels(ADDON_HANDLE handle, bool bRadio)
     entry = data[index];
     
     channel.strEmbyId = entry["Id"].asString();
-    channel.iUniqueId = stoi(entry["Number"].asString());
+    channel.iUniqueId = *((unsigned int*)entry["Id"].asCString());
     channel.strChannelName = entry["Name"].asString();  
     channel.iChannelNumber = stoi(entry["ChannelNumber"].asString());
     channel.iSubChannelNumber = 0;
@@ -291,7 +291,7 @@ void Emby::TransferRecordings(ADDON_HANDLE handle)
     strncpy(tag.strPlot, recording.strPlot.c_str(), sizeof(tag.strPlot) -1);
     strncpy(tag.strChannelName, recording.strChannelName.c_str(), sizeof(tag.strChannelName) -1);
     strncpy(tag.strIconPath, recording.strIconPath.c_str(), sizeof(tag.strIconPath) -1);
-	recording.strDirectory = "";
+	  recording.strDirectory = "";
     strncpy(tag.strDirectory, recording.strDirectory.c_str(), sizeof(tag.strDirectory) -1);
     tag.recordingTime = recording.startTime;
     tag.iDuration = recording.iDuration;
@@ -365,6 +365,8 @@ unsigned int Emby::GetTimersAmount(void)
 
 PVR_ERROR Emby::GetTimers(ADDON_HANDLE handle)
 {  
+  int y,M,d,h,m;
+  float s;
   m_timer.clear();
 
   Json::Value data;
@@ -374,21 +376,43 @@ PVR_ERROR Emby::GetTimers(ADDON_HANDLE handle)
     XBMC->Log(LOG_ERROR, "No timer available.");
     return PVR_ERROR_SERVER_ERROR;
   }
+  data = data["Items"];
 
   for (unsigned int index = 0; index < data.size(); ++index)
   {
     EmbyTimer timer;
     Json::Value entry = data[index];
 
-    timer.iId = entry["Id"].asInt();
-    timer.strTitle = entry["DisplayName"].asString();
-    timer.iChannelId = entry["ChannelId"].asInt();
-    timer.startTime = static_cast<time_t>(entry["RealStartTime"].asDouble() / 1000);
-    timer.endTime = static_cast<time_t>(entry["RealEndTime"].asDouble() / 1000);
-    timer.iStartOffset = entry["StartOffset"].asInt();
-    timer.iEndOffset = entry["EndOffset"].asInt();      
+    timer.iId = *((unsigned int*)entry["Id"].asCString());
+    timer.strTitle = entry["Name"].asString();
+    timer.iChannelId = *((unsigned int*)entry["ChannelId"].asCString());
+    timer.iProgramId = *((unsigned int*)entry["ProgramId"].asCString());
+
+    sscanf(entry["StartDate"].asCString(), "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
+    tm time;
+    time.tm_year = y - 1900; // Year since 1900
+    time.tm_mon = M - 1;     // 0-11
+    time.tm_mday = d;        // 1-31
+    time.tm_hour = h;        // 0-23
+    time.tm_min = m;         // 0-59
+    time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
+
+    timer.startTime = timegm(&time);
+
+    sscanf(entry["EndDate"].asCString(), "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
+    time.tm_year = y - 1900; // Year since 1900
+    time.tm_mon = M - 1;     // 0-11
+    time.tm_mday = d;        // 1-31
+    time.tm_hour = h;        // 0-23
+    time.tm_min = m;         // 0-59
+    time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
     
-    std::string strState = entry["State"].asString();
+    timer.endTime = timegm(&time);
+    
+    timer.iStartOffset = entry["PrePaddingSeconds"].asInt();
+    timer.iEndOffset = entry["PostPaddingSeconds"].asInt();      
+    
+    std::string strState = entry["Status"].asString();
     if (strState == "Idle" || strState == "Prepared")
     {
       timer.state = PVR_TIMER_STATE_SCHEDULED;
@@ -439,7 +463,7 @@ void Emby::TransferTimer(ADDON_HANDLE handle)
     tag.strDirectory[0] = '\0';
     tag.iPriority = 0;
     tag.iLifetime = 0;
-    tag.iEpgUid = 0;
+    tag.iEpgUid = timer.iProgramId;
 
     PVR->TransferTimerEntry(handle, &tag);
   }
@@ -449,13 +473,13 @@ int Emby::RESTGetTimer(Json::Value& response)
 {
   cRest rest;
   std::string strUrl = m_strBaseUrl + URI_REST_TIMER;
-  int retval = rest.Get(strUrl, "", response);
+  int retval = rest.Get(strUrl, "", response,m_strToken);
 
   if (retval >= 0)
   {
-    if (response.type() == Json::arrayValue)
+    if (response.type() == Json::objectValue)
     {
-      return response.size();
+      return response["Items"].size();
     }
     else
     {
@@ -539,7 +563,7 @@ PVR_ERROR Emby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel
   Json::Value data;
   for (vector<EmbyChannel>::iterator myChannel = m_channels.begin(); myChannel < m_channels.end(); ++myChannel)
   {
-    if (myChannel->iUniqueId != (int)channel.iUniqueId) continue;
+    if (myChannel->iUniqueId != channel.iUniqueId) continue;
 	  if (!GetEPG(myChannel->strEmbyId, iStart, iEnd, data)) continue;
     Json::Value entries = data["Items"];
     if (entries.size() <= 0) continue;
@@ -583,7 +607,8 @@ PVR_ERROR Emby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel
       epg.strCast = NULL; // unused
       epg.strDirector = NULL; // unused
       epg.strWriter = NULL; // unused
-      epg.iYear = 0; // unused
+      if (entry["ProductionYear"]!= Json::nullValue) 
+        epg.iYear = entry["ProductionYear"].asInt();
       epg.strIMDBNumber = NULL; // unused
       epg.strIconPath = ""; // unused
       epg.iGenreType = 0; // unused
@@ -730,7 +755,7 @@ bool Emby::GetChannel(const PVR_CHANNEL &channel, EmbyChannel &myChannel)
   for (unsigned int iChannelPtr = 0; iChannelPtr < m_channels.size(); iChannelPtr++)
   {    
     EmbyChannel &thisChannel = m_channels.at(iChannelPtr);
-    if (thisChannel.iUniqueId == (int)channel.iUniqueId)
+    if (thisChannel.iUniqueId == channel.iUniqueId)
     {
       myChannel.iUniqueId = thisChannel.iUniqueId;
       myChannel.bRadio = thisChannel.bRadio;

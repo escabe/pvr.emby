@@ -32,7 +32,7 @@ typedef enum EMBY_UPDATE_STATE
 struct EmbyChannel
 {
   bool        bRadio;
-  int         iUniqueId;
+  unsigned int iUniqueId;
   int         iChannelNumber;
   int		  iSubChannelNumber;
   int         iEncryptionSystem;  
@@ -57,8 +57,8 @@ struct EmbyChannelGroup
 
 struct EmbyEpgEntry
 {
-  int         iBroadcastId;
-  int         iChannelId;
+  unsigned int iBroadcastId;
+  unsigned int iChannelId;
   int         iGenreType;
   int         iGenreSubType;
   time_t      startTime;
@@ -79,9 +79,11 @@ struct EmbyEpgChannel
 
 struct EmbyTimer
 {
-  int             iId;
+  unsigned int    iId;
   std::string     strTitle;
-  int             iChannelId;
+  unsigned int    iChannelId;
+  unsigned int    iProgramId;
+  std::string     strEmbyId;
   time_t          startTime;
   time_t          endTime;
   int             iStartOffset;
