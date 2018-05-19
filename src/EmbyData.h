@@ -38,7 +38,8 @@ struct EmbyChannel
   int         iEncryptionSystem;  
   std::string strChannelName;
   std::string strLogoPath;
-  std::string strStreamURL;  
+  std::string strStreamURL; 
+  std::string strEmbyId; 
 
   bool operator < (const EmbyChannel& channel) const
   {
@@ -140,7 +141,7 @@ public:
 
   /* EPG */
   PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);  
-  bool GetEPG(int id, time_t iStart, time_t iEnd, Json::Value& data);
+  bool GetEPG(std::string id, time_t iStart, time_t iEnd, Json::Value& data);
   
   /* Preview */
   const char* GetLiveStreamURL(const PVR_CHANNEL &channelinfo);
@@ -165,7 +166,7 @@ private:
   int RESTGetChannelList(Json::Value& response);
   int RESTGetRecordings(Json::Value& response);
   int RESTGetTimer(Json::Value& response);  
-  int RESTGetEpg(int id, time_t iStart, time_t iEnd, Json::Value& response);
+  int RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value& response);
   int RESTGetStorage(Json::Value& response);
   int RESTGetFolder(Json::Value& response);
 

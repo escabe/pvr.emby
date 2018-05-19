@@ -18,7 +18,7 @@
 #define URI_REST_CHANNELS       "/LiveTv/Channels"
 #define URI_REST_RECORDINGS     "/TVC/user/data/gallery/video"
 #define URI_REST_TIMER          "/TVC/user/data/recordingtasks"
-#define URI_REST_EPG            "/TVC/user/data/epg"
+#define URI_REST_EPG            "/LiveTv/Programs"
 #define URI_REST_STORAGE        "/TVC/user/data/storage"
 #define URI_REST_FOLDER	        "/TVC/user/data/folder"
 
@@ -160,7 +160,7 @@ PVR_ERROR Emby::GetChannels(ADDON_HANDLE handle, bool bRadio)
 
     entry = data[index];
     
-
+    channel.strEmbyId = entry["Id"].asString();
     channel.iUniqueId = stoi(entry["Number"].asString());
     channel.strChannelName = entry["Name"].asString();  
     channel.iChannelNumber = stoi(entry["ChannelNumber"].asString());
@@ -533,55 +533,74 @@ PVR_ERROR Emby::AddTimer(const PVR_TIMER &timer)
 PVR_ERROR Emby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
   XBMC->Log(LOG_DEBUG, "%s - Channel: %s\n", __FUNCTION__, channel.strChannelName);
-  
+  int y,M,d,h,m;
+  float s;
+
   Json::Value data;
   for (vector<EmbyChannel>::iterator myChannel = m_channels.begin(); myChannel < m_channels.end(); ++myChannel)
   {
     if (myChannel->iUniqueId != (int)channel.iUniqueId) continue;
-	  if (!GetEPG((int)channel.iUniqueId, iStart, iEnd, data)) continue;
-    if (data.size() <= 0) continue;
+	  if (!GetEPG(myChannel->strEmbyId, iStart, iEnd, data)) continue;
+    Json::Value entries = data["Items"];
+    if (entries.size() <= 0) continue;
 
-    for (unsigned int index = 0; index < data.size(); ++index) 
+    int iChannelId = myChannel->iUniqueId;
+    EPG_TAG epg;
+    for (unsigned int i = 0; i < entries.size(); ++i)
     {
-      Json::Value buffer = data[index];
-      int iChannelId = buffer["Id"].asInt();
-      Json::Value entries = buffer["Entries"];
-      EPG_TAG epg;
-      
-      for (unsigned int i = 0; i < entries.size(); ++i)
-      {
-        Json::Value entry = entries[i];
-        memset(&epg, 0, sizeof(EPG_TAG));
+      Json::Value entry = entries[i];
+      memset(&epg, 0, sizeof(EPG_TAG));
 
-        epg.iUniqueBroadcastId = IsSupported("broadway") ? entry["Id"].asUInt() : GetEventId((long long)entry["Id"].asDouble());
-        epg.strTitle = entry["Title"].asCString();
-        epg.iUniqueChannelId = iChannelId;
-        epg.startTime = static_cast<time_t>(entry["StartTime"].asDouble() / 1000);
-        epg.endTime = static_cast<time_t>(entry["EndTime"].asDouble() / 1000);
-        epg.strPlotOutline = entry["LongDescription"].asCString();
-        epg.strPlot = entry["ShortDescription"].asCString();
-        epg.strOriginalTitle = NULL; // unused
-        epg.strCast = NULL; // unused
-        epg.strDirector = NULL; // unused
-        epg.strWriter = NULL; // unused
-        epg.iYear = 0; // unused
-        epg.strIMDBNumber = NULL; // unused
-        epg.strIconPath = ""; // unused
-        epg.iGenreType = 0; // unused
-        epg.iGenreSubType = 0; // unused
-        epg.strGenreDescription = "";
-        epg.firstAired = 0; // unused
-        epg.iParentalRating = 0; // unused
-        epg.iStarRating = 0; // unused
-        epg.bNotify = false;
-        epg.iSeriesNumber = 0; // unused
-        epg.iEpisodeNumber = 0; // unused
-        epg.iEpisodePartNumber = 0; // unused
-        epg.strEpisodeName = ""; // unused
-        epg.iFlags = EPG_TAG_FLAG_UNDEFINED;
+      epg.iUniqueBroadcastId = *((unsigned int*)entry["Id"].asCString());
+      epg.strTitle = entry["Name"].asCString();
+      epg.iUniqueChannelId = iChannelId;
 
-        PVR->TransferEpgEntry(handle, &epg);
-      }
+      sscanf(entry["StartDate"].asCString(), "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
+      tm time;
+      time.tm_year = y - 1900; // Year since 1900
+      time.tm_mon = M - 1;     // 0-11
+      time.tm_mday = d;        // 1-31
+      time.tm_hour = h;        // 0-23
+      time.tm_min = m;         // 0-59
+      time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
+      epg.startTime = timegm(&time);
+
+      sscanf(entry["EndDate"].asCString(), "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
+      time.tm_year = y - 1900; // Year since 1900
+      time.tm_mon = M - 1;     // 0-11
+      time.tm_mday = d;        // 1-31
+      time.tm_hour = h;        // 0-23
+      time.tm_min = m;         // 0-59
+      time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
+      epg.endTime = timegm(&time);
+
+      //epg.startTime = static_cast<time_t>(entry["StartTime"].asDouble() / 1000);
+      //epg.endTime = static_cast<time_t>(entry["EndTime"].asDouble() / 1000);
+      if (entry["Overview"]!= Json::nullValue)
+        epg.strPlot = entry["Overview"].asCString();
+      epg.strPlotOutline = NULL;
+      epg.strOriginalTitle = NULL; // unused
+      epg.strCast = NULL; // unused
+      epg.strDirector = NULL; // unused
+      epg.strWriter = NULL; // unused
+      epg.iYear = 0; // unused
+      epg.strIMDBNumber = NULL; // unused
+      epg.strIconPath = ""; // unused
+      epg.iGenreType = 0; // unused
+      epg.iGenreSubType = 0; // unused
+      epg.strGenreDescription = "";
+      epg.firstAired = 0; // unused
+      epg.iParentalRating = 0; // unused
+      epg.iStarRating = 0; // unused
+      epg.bNotify = false;
+      epg.iSeriesNumber = 0; // unused
+      epg.iEpisodeNumber = 0; // unused
+      epg.iEpisodePartNumber = 0; // unused
+      if (entry["EpisodeTitle"]!= Json::nullValue)
+        epg.strEpisodeName = entry["EpisodeTitle"].asCString();
+      epg.iFlags = EPG_TAG_FLAG_UNDEFINED;
+
+      PVR->TransferEpgEntry(handle, &epg);
     }
 
 	  return PVR_ERROR_NO_ERROR;
@@ -595,7 +614,7 @@ unsigned int Emby::GetEventId(long long EntryId)
 	return (unsigned int)((EntryId >> 32) & 0xFFFFFFFFL);
 }
 
-bool Emby::GetEPG(int id, time_t iStart, time_t iEnd, Json::Value& data)
+bool Emby::GetEPG(std::string id, time_t iStart, time_t iEnd, Json::Value& data)
 {   
   int retval = RESTGetEpg(id, iStart, iEnd, data);
   if (retval < 0)
@@ -609,20 +628,20 @@ bool Emby::GetEPG(int id, time_t iStart, time_t iEnd, Json::Value& data)
 }
 
 
-int Emby::RESTGetEpg(int id, time_t iStart, time_t iEnd, Json::Value& response)
+int Emby::RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value& response)
 {
   std::string strParams;
   //strParams= StringUtils::Format("?ids=%d&extended=1&start=%d&end=%d", id, iStart * 1000, iEnd * 1000);
-  strParams= StringUtils::Format("?ids=%d&extended=1&start=%llu&end=%llu", id, static_cast<unsigned long long>(iStart) * 1000, static_cast<unsigned long long>(iEnd) * 1000);
+  strParams= StringUtils::Format("?ChannelIds=%s&fields=Overview", id.c_str());
   
   cRest rest;
   std::string strUrl = m_strBaseUrl + URI_REST_EPG;
-  int retval = rest.Get(strUrl, strParams, response);
+  int retval = rest.Get(strUrl, strParams, response,m_strToken);
   if (retval >= 0)
   {
-    if (response.type() == Json::arrayValue)
+    if (response.type() == Json::objectValue)
     {
-      return response.size();
+      return response["Items"].size();
     }
     else
     {
