@@ -33,12 +33,12 @@ public:
 	cRest(void) {};
 	~cRest(void) {};
 
-	int Get(const std::string& command, const std::string& arguments, Json::Value& json_response);
-	int Post(const std::string& command, const std::string& arguments, Json::Value& json_response);
+	int Get(const std::string& command, const std::string& arguments, Json::Value& json_response,const std::string& token = std::string());
+	int Post(const std::string& command, const std::string& arguments, Json::Value& json_response,const std::string& token = std::string());
 };
 
 
 
-int httpRequest(const std::string& command, const std::string& arguments, const bool write, std::string& json_response);
+int httpRequest(const std::string& command, const std::string& arguments, const bool write, std::string& json_response, const std::string& token);
 
 

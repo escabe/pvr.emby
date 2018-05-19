@@ -105,34 +105,6 @@ struct EmbyRecording
   std::string strIconPath;
 };
 
-struct EmbyConfig
-{
-
-	std::string Brand;
-	std::string Caps;
-	std::string Hostname;
-	int Port;
-	std::string GuestLink;
-
-	void init(const Json::Value& data)
-	{
-		Brand = data["Brand"].asString();
-		Caps = data["Caps"].asString();
-		Hostname = data["Hostname"].asString();
-		Port = data["Port"].asInt();
-		GuestLink = data["GuestLink"].asString();
-	}
-	
-	bool hasCapability(const std::string& cap)
-	{
-		std::string caps = ";" + Caps + ";";
-		if (caps.find(";" + cap + ";") != std::string::npos) {
-			return true;
-		}
-		return false;
-	}
-};
-
 class Emby : public P8PLATFORM::CThread
 {
 public:
@@ -219,6 +191,7 @@ private:
   std::string GetStid(int id);
   std::string GetChannelLogo(Json::Value entry);
   std::string GetShortName(Json::Value entry);
+  bool Login(void);
   
   void *Process(void);
     
@@ -233,7 +206,7 @@ private:
   std::string                       m_strBackendVersion;
   std::string                       m_strUsername;
   std::string                       m_strPassword;
-  EmbyConfig                        m_config;
+  std::string                       m_strToken;
   int                               m_iBitrate;
   bool                              m_bTranscode;
   bool                              m_bUsePIN;
@@ -244,7 +217,6 @@ private:
   std::string                       m_strPreviewMode;
   std::string                       m_strStid;
   bool                              m_bUpdating;  
-  std::string                       m_strBackendUrlNoAuth;
   
   std::vector<EmbyEpgChannel>       m_epg;    
   std::vector<EmbyChannel>          m_channels;  

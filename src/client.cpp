@@ -251,7 +251,7 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
     if (strNewPassword != g_strPassword)
     {
       g_strPassword = strNewPassword;
-      XBMC->Log(LOG_INFO, "%s - Changed Setting 'password' from %s to %s", __FUNCTION__, g_strPassword.c_str(), (const char*)settingValue);
+      XBMC->Log(LOG_INFO, "%s - Changed Setting 'passwordm_strBaseUrl' from %s to %s", __FUNCTION__, g_strPassword.c_str(), (const char*)settingValue);
       return ADDON_STATUS_NEED_RESTART;
     }    
   }

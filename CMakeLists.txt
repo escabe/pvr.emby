@@ -22,12 +22,14 @@ set(DEPLIBS ${p8-platform_LIBRARIES}
 set(EMBY_SOURCES src/client.cpp
                  src/md5.cpp
                  src/EmbyData.cpp
-                 src/rest.cpp)
+                 src/rest.cpp
+                 src/base64.cpp)
 
 set(EMBY_HEADERS src/client.h
                  src/md5.h
                  src/EmbyData.h
-                 src/rest.h)
+                 src/rest.h
+                 src/base64.h)
 
 build_addon(pvr.emby EMBY DEPLIBS)
 

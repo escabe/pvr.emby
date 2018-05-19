@@ -17,6 +17,7 @@
 *
 */
 #include "rest.h"
+#include "base64.h"
 #include <memory>
 #include <vector>
 #include <stdlib.h>
@@ -24,11 +25,11 @@
 
 using namespace ADDON;
 
-int cRest::Get(const std::string& command, const std::string& arguments, Json::Value& json_response)
+int cRest::Get(const std::string& command, const std::string& arguments, Json::Value& json_response, const std::string& token)
 {
 	std::string response;
 	int retval;
-	retval = httpRequest(command, arguments, false, response);
+	retval = httpRequest(command, arguments, false, response,token);
 
 	if (retval != E_FAILED)
 	{
@@ -56,11 +57,11 @@ int cRest::Get(const std::string& command, const std::string& arguments, Json::V
 	return retval;
 }
 
-int cRest::Post(const std::string& command, const std::string& arguments, Json::Value& json_response)
+int cRest::Post(const std::string& command, const std::string& arguments, Json::Value& json_response, const std::string& token)
 {
 	std::string response;
 	int retval;
-	retval = httpRequest(command, arguments, true, response);
+	retval = httpRequest(command, arguments, true, response, token);
 
 	if (retval != E_FAILED)
 	{
@@ -88,26 +89,29 @@ int cRest::Post(const std::string& command, const std::string& arguments, Json::
 	return retval;
 }
 
-int httpRequest(const std::string& command, const std::string& arguments, const bool write, std::string& json_response)
+int httpRequest(const std::string& command, const std::string& arguments, const bool write, std::string& json_response, const std::string& token)
 {
 	//P8PLATFORM::CLockObject critsec(communication_mutex);		
 	std::string strUrl = command;
 	
 	if (write) {	// POST http request
-		void* hFile = XBMC->OpenFileForWrite(strUrl.c_str(), 0);
+		void* hFile = XBMC->CURLCreate(strUrl.c_str());
+		std::string data = base64_encode(arguments.c_str(),arguments.length());
+		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_PROTOCOL,"postdata",data.c_str());
+		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"Kodi\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"1.0.0.0\"");
+		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Content-Type","application/json");
+		if (!token.empty())
+			XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
+		XBMC->CURLOpen(hFile,0);
 		if (hFile != NULL)
 		{
-			int rc = XBMC->WriteFile(hFile, arguments.c_str(), arguments.length());
-			if (rc >= 0)
-			{
-				std::string result;
-				result.clear();
-				char buffer[1024];
-				while (XBMC->ReadFileString(hFile, buffer, 1024))
-					result.append(buffer);
-				json_response = result;
-				return 0;
-			}
+			std::string result;
+			result.clear();
+			char buffer[1024];
+			while (XBMC->ReadFileString(hFile, buffer, 1024))
+				result.append(buffer);
+			json_response = result;
+			return 0;
 			XBMC->CloseFile(hFile);
 		}
 	}

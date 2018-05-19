@@ -13,7 +13,7 @@
 #include "md5.h"
 
 
-
+#define URI_REST_AUTHENTICATEBYNAME "/Users/AuthenticateByName"
 #define URI_REST_CONFIG         "/TVC/free/data/config"
 #define URI_REST_CHANNELS       "/TVC/user/data/tv/channels"
 #define URI_REST_CHANNELLISTS   "/TVC/user/data/tv/channellists"
@@ -40,8 +40,9 @@ using namespace P8PLATFORM;
 /************************************************************/
 /** Class interface */
 
-Emby::Emby() :m_strBaseUrl(""), m_strStid(""), m_strPreviewMode(DEFAULT_PREVIEW_MODE), m_config({ "", "", "", 0, "" })
+Emby::Emby() :m_strBaseUrl(""), m_strStid(""), m_strToken(""), m_strPreviewMode(DEFAULT_PREVIEW_MODE)
 {   
+  m_iPortWeb = g_iPortWeb;
   m_bIsConnected = false;      
   m_bUpdating = false;  
   m_iNumChannels = 0;
@@ -49,7 +50,6 @@ Emby::Emby() :m_strBaseUrl(""), m_strStid(""), m_strPreviewMode(DEFAULT_PREVIEW_
   m_iNumGroups = 0;  
   m_strUsername = g_strUsername;
   m_strPassword = g_strPassword;
-  m_strBackendUrlNoAuth= StringUtils::Format("http://%s:%u", g_strHostname.c_str(), m_iPortWeb);
 }
 
 void  *Emby::Process()
@@ -86,31 +86,17 @@ bool Emby::Open()
   XBMC->Log(LOG_NOTICE, "%s - Emby Systems Addon Configuration options", __FUNCTION__);
   XBMC->Log(LOG_NOTICE, "%s - Hostname: '%s'", __FUNCTION__, g_strHostname.c_str());
   XBMC->Log(LOG_NOTICE, "%s - WebPort: '%d'", __FUNCTION__, m_iPortWeb);
-    
-  m_bIsConnected = GetFreeConfig();
 
-  if (!m_bIsConnected)
-  {
-    XBMC->Log(LOG_ERROR, "%s It seem's that Emby cannot be reached. Make sure that you set the correct configuration options in the addon settings!", __FUNCTION__);
-    return false;
-  }
- 
-  // add user:pin in front of the URL if PIN is set  
+  // Set base url
   std::string strURL = "";
-  std::string strAuth = "";
-
-
-  strURL= StringUtils::Format("http://%s%s:%u%s", strURL.c_str(), g_strHostname.c_str(), m_iPortWeb, strAuth.c_str());
+  strURL= StringUtils::Format("http://%s%s:%u", strURL.c_str(), g_strHostname.c_str(), m_iPortWeb);
   m_strBaseUrl = strURL;
 
-  // request index.html to force wake-up from standby
-  if (IsSupported("broadway")) {
-	  int retval;
-	  cRest rest;
-	  Json::Value response;  
-
-	  std::string strUrl = m_strBaseUrl + URI_INDEX_HTML;
-	  retval = rest.Get(strUrl, "", response);
+// Perform login
+  m_bIsConnected = Login();
+  if (!m_bIsConnected) {
+    XBMC->Log(LOG_ERROR, "%s It seem's that Emby cannot be reached. Make sure that you set the correct configuration options in the addon settings!", __FUNCTION__);
+    return false;
   }
 
   if (m_channels.size() == 0)
@@ -123,6 +109,28 @@ bool Emby::Open()
   CreateThread();
 
   return IsRunning();
+}
+
+bool Emby::Login(void) {
+  int retval;
+  cRest rest;
+  Json::Value response;  
+  // Build login data
+  Json::Value data;  
+  Json::FastWriter fastWriter;
+  data["username"] = m_strUsername;
+  data["pw"] = m_strPassword;
+  std::string strdata = fastWriter.write(data);
+  // Perform the request
+  std::string strUrl = m_strBaseUrl + URI_REST_AUTHENTICATEBYNAME;
+  retval = rest.Post(strUrl, strdata, response);
+  if (retval != E_FAILED)
+  {
+    // Store token
+    m_strToken = response["AccessToken"].asString();
+    return true;
+  }
+  return false;
 }
 
 void Emby::CloseLiveStream(void)
@@ -156,27 +164,31 @@ PVR_ERROR Emby::GetChannels(ADDON_HANDLE handle, bool bRadio)
     entry = data[index];
     
     channel.iUniqueId = entry["Id"].asInt();
-    channel.strChannelName = entry["DisplayName"].asString();    
-	if (entry["MajorChannelNo"] != Json::nullValue)
-	{
-		channel.iChannelNumber = entry["MajorChannelNo"].asInt();
-	}	
-	else 
-	{
-		channel.iChannelNumber = entry["Id"].asInt();
-	}
-	if (entry["MinorChannelNo"] != Json::nullValue)
-	{
-		channel.iSubChannelNumber = entry["MinorChannelNo"].asInt();
-	}
-	else {
-		channel.iSubChannelNumber = 0;
-	}
-	channel.iEncryptionSystem = 0;	
+    channel.strChannelName = entry["DisplayName"].asString();  
+
+    if (entry["MajorChannelNo"] != Json::nullValue)
+    {
+      channel.iChannelNumber = entry["MajorChannelNo"].asInt();
+    }	
+    else 
+    {
+      channel.iChannelNumber = entry["Id"].asInt();
+    }
+    if (entry["MinorChannelNo"] != Json::nullValue)
+    {
+      channel.iSubChannelNumber = entry["MinorChannelNo"].asInt();
+    }
+    else {
+      channel.iSubChannelNumber = 0;
+    }
+
+    channel.iEncryptionSystem = 0;	
     std::string params;
+    
     params = GetPreviewParams(handle, entry);
     channel.strStreamURL = GetPreviewUrl(params);    
     channel.strLogoPath = GetChannelLogo(entry);
+
     m_iNumChannels++;
     m_channels.push_back(channel);
     
@@ -850,25 +862,6 @@ bool Emby::IsConnected()
   return m_bIsConnected;
 }
 
-bool Emby::GetFreeConfig()
-{  	
-  std::string strConfig = "";
-
-  cRest rest;
-  Json::Value response;
-  std::string strUrl = m_strBackendUrlNoAuth + URI_REST_CONFIG;
-  int retval = rest.Get(strUrl, "", response);
-  if (retval != E_FAILED)
-  {
-    if (response.type() == Json::objectValue)
-    {      
-      m_config.init(response);
-    }
-    return true;
-  }
-  
-  return false;
-}
 
 const char* Emby::GetBackendName()
 {
@@ -1128,7 +1121,7 @@ int Emby::RESTGetChannelList(int id, Json::Value& response)
 
 bool Emby::IsSupported(const std::string& cap)
 {
-	return m_config.hasCapability(cap);
+	return false;
 }
 
 
