@@ -404,6 +404,7 @@ PVR_ERROR GetRecordings(ADDON_HANDLE handle, bool deleted)
 PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
 {
   /* TODO: Implement this to get support for the timer features introduced with PVR API 1.9.7 */
+  
   return PVR_ERROR_NOT_IMPLEMENTED;
 }
 

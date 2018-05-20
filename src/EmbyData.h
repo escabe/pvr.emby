@@ -165,7 +165,7 @@ private:
   int RESTGetStorage(Json::Value& response);
   int RESTGetFolder(Json::Value& response);
 
-  int RESTAddTimer(const PVR_TIMER &timer, Json::Value& response);  
+  int RESTAddTimer(std::string id, Json::Value& response);  
 
   // helper functions    
   std::string URLEncodeInline(const std::string& sSrc);

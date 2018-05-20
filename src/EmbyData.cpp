@@ -481,56 +481,82 @@ int Emby::RESTGetTimer(Json::Value& response)
 }
 
 
-int Emby::RESTAddTimer(const PVR_TIMER &timer, Json::Value& response)
+int Emby::RESTAddTimer(std::string id, Json::Value& response)
 {	
-  std::string strQueryString;
-  strQueryString= StringUtils::Format("{\"Id\":0,\"ChannelId\":%i,\"State\":\"%s\",\"RealStartTime\":%llu,\"RealEndTime\":%llu,\"StartOffset\":%llu,\"EndOffset\":%llu,\"DisplayName\":\"%s\",\"Recurrence\":%i,\"ChannelListId\":%i,\"Profile\":\"%s\"}",
-	  timer.iClientChannelUid, "Idle", static_cast<unsigned long long>(timer.startTime) * 1000, static_cast<unsigned long long>(timer.endTime) * 1000, static_cast<unsigned long long>(timer.iMarginStart) * 1000, static_cast<unsigned long long>(timer.iMarginEnd) * 1000, timer.strTitle, 0, 0, DEFAULT_REC_PROFILE);
 
+  // Get empty timer
+  std::string strUrl = m_strBaseUrl + "/LiveTV/Timers/Defaults";
+  std::string strQueryString = StringUtils::Format("?ProgramId=%s",id.c_str());
   cRest rest;
-  std::string strUrl = m_strBaseUrl + URI_REST_TIMER;
-  int retval = rest.Post(strUrl, strQueryString, response);
+
+  int retval = rest.Get(strUrl, strQueryString, response,m_strToken);
 
   if (retval >= 0)
   {
     if (response.type() == Json::objectValue)
     {
-		retval = 0;
+      Json::Value r2;
+      // POST to create timer
+      Json::FastWriter fastWriter;
+      std::string strdata = fastWriter.write(response);
+      strUrl = m_strBaseUrl + "/LiveTV/Timers";
+      retval = rest.Post(strUrl,strdata,r2,m_strToken);
+      return 0;
     }
     else
     {
       XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
-	  return -1;
+	    return -1;
     }
   }
   else
   {
     XBMC->Log(LOG_DEBUG, "Request Timer failed. Return value: %i\n", retval);
-	return -1;
+	  return -1;
   }
     
-  // Trigger a timer update to receive new timer from Broadway
+  
   PVR->TriggerTimerUpdate();
-  if (timer.startTime <= 0)
-  {
-    // Refresh the recordings
-    usleep(100000);
-    PVR->TriggerRecordingUpdate();
-  }
-
   return retval;
 }
 
 PVR_ERROR Emby::AddTimer(const PVR_TIMER &timer) 
 {
-  XBMC->Log(LOG_DEBUG, "AddTimer iClientChannelUid: %i\n", timer.iClientChannelUid);
-  
-  Json::Value data;  
-  int retval = RESTAddTimer(timer, data);
-  if (retval == 0) {
-	  return PVR_ERROR_NO_ERROR;
+  // Find the Channel
+  std:string strChannelId;
+  for (const auto& EmbyChannel : m_channels)
+  {
+    if (EmbyChannel.iUniqueId == (unsigned int)timer.iClientChannelUid)
+    {
+      strChannelId = EmbyChannel.strEmbyId;
+      XBMC->Log(LOG_DEBUG, "AddTimer Found ChannelID: %s.",strChannelId.c_str());
+      // Grab the EPG from Emby for this channel
+      Json::Value data;  
+      int retval = RESTGetEpg(strChannelId, 0, 0, data);
+      if (retval < 0)
+      {
+        XBMC->Log(LOG_ERROR, "AddTimer Could not retrieve EPG.");
+        return PVR_ERROR_SERVER_ERROR;
+      }
+      data = data["Items"];
+      // Match EPG Entry
+      for (unsigned int i = 0; i < data.size(); ++i)
+      {
+        if (*((unsigned int*)data[i]["Id"].asCString()) == timer.iEpgUid) {
+          // Add Timer for that entry
+          int retval = RESTAddTimer(data[i]["Id"].asString(), data);
+          if (retval == 0) {
+            PVR->TriggerTimerUpdate();
+            return PVR_ERROR_NO_ERROR;
+          }
+          XBMC->Log(LOG_ERROR, "AddTimer Failed.");
+          return PVR_ERROR_SERVER_ERROR;
+        }
+      }
+    }
   }
   
+  XBMC->Log(LOG_ERROR, "AddTimer Only Supports Recordings based on EPG Entry. EPG Entry not found.");
   return PVR_ERROR_SERVER_ERROR;
 }
 
@@ -570,20 +596,14 @@ PVR_ERROR Emby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel
     EPG_TAG epg;
     for (unsigned int i = 0; i < entries.size(); ++i)
     {
-      EmbyEpgEntry embyepg;
 
       Json::Value entry = entries[i];
       memset(&epg, 0, sizeof(EPG_TAG));
-
       
       epg.iUniqueBroadcastId = *((unsigned int*)entry["Id"].asCString());
-      embyepg.iBroadcastId = epg.iUniqueBroadcastId;
-      embyepg.strEmbyBroadcastId = entry["Id"].asString();
       
       epg.strTitle = entry["Name"].asCString();
       epg.iUniqueChannelId = iChannelId;
-      embyepg.iChannelId = iChannelId;
-      embyepg.strEmbyChannelId = entry["ChannelId"].asString();
 
       epg.startTime = ISO8601ToTime(entry["StartDate"].asCString());
       epg.endTime = ISO8601ToTime(entry["EndDate"].asCString());
@@ -614,8 +634,6 @@ PVR_ERROR Emby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel
       if (entry["EpisodeTitle"]!= Json::nullValue)
         epg.strEpisodeName = entry["EpisodeTitle"].asCString();
       epg.iFlags = EPG_TAG_FLAG_UNDEFINED;
-
-      m_epg.push_back(embyepg);
 
       PVR->TransferEpgEntry(handle, &epg);
     }
