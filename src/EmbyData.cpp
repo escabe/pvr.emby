@@ -16,7 +16,7 @@
 #define URI_REST_AUTHENTICATEBYNAME "/Users/AuthenticateByName"
 #define URI_REST_CONFIG         "/TVC/free/data/config"
 #define URI_REST_CHANNELS       "/LiveTv/Channels"
-#define URI_REST_RECORDINGS     "/TVC/user/data/gallery/video"
+#define URI_REST_RECORDINGS     "/LiveTV/Recordings"
 #define URI_REST_TIMER          "/LiveTV/Timers"
 #define URI_REST_EPG            "/LiveTv/Programs"
 #define URI_REST_STORAGE        "/TVC/user/data/storage"
@@ -123,8 +123,9 @@ bool Emby::Login(void) {
   retval = rest.Post(strUrl, strdata, response);
   if (retval != E_FAILED)
   {
-    // Store token
+    // Store token and user Id
     m_strToken = response["AccessToken"].asString();
+    m_strUserId = response["User"]["Id"].asString();
     return true;
   }
   return false;
@@ -249,26 +250,27 @@ PVR_ERROR Emby::GetRecordings(ADDON_HANDLE handle)
   Json::Value data;
   int retval = RESTGetRecordings(data);  
   if (retval > 0) {
-	for (unsigned int index = 0; index < data["video"].size(); ++index)
-	{
-		EmbyRecording recording;
-		//Json::Value entry;
+    data = data["Items"];
+    for (unsigned int index = 0; index < data.size(); ++index)
+    {
+      EmbyRecording recording;
+      Json::Value entry = data[index];
 
-		//entry = data["video"][index];
-		Json::Value entry(data["video"][index]);
-		recording.strRecordingId = index;
-		recording.strTitle = entry["DisplayName"].asString();
-		recording.startTime = static_cast<time_t>(entry["RecDate"].asDouble() / 1000); // in seconds
-		recording.iDuration = static_cast<time_t>(entry["Duration"].asDouble() / 1000); // in seconds
-		recording.iLastPlayedPosition = static_cast<int>(entry["Resume"].asDouble() / 1000); // in seconds
-		
-		//std::string params = GetPreviewParams(handle, entry);
-		//recording.strStreamURL = GetPreviewUrl(params);
-		m_iNumRecordings++;
-		m_recordings.push_back(recording);
+      recording.strRecordingId = entry["Id"].asString();
+      recording.strTitle = entry["Name"].asString();
+      recording.strDirectory = "";
+      recording.startTime = ISO8601ToTime(entry["PremiereDate"].asCString());
+      recording.iDuration = entry["RunTimeTicks"].asInt64() / 10000000;
+      recording.iLastPlayedPosition = entry["UserData"]["PlaybackPositionTicks"].asInt64() / 10000000;
+      
+      //std::string params = GetPreviewParams(handle, entry);
+      recording.strStreamURL = GetStreamUrl(entry["Id"].asString());
+      recording.strIconPath = GetChannelLogo(entry["Id"].asString());
+      m_iNumRecordings++;
+      m_recordings.push_back(recording);
 
-		XBMC->Log(LOG_DEBUG, "%s loaded Recording entry '%s'", __FUNCTION__, recording.strTitle.c_str());
-	}
+      XBMC->Log(LOG_DEBUG, "%s loaded Recording entry '%s'", __FUNCTION__, recording.strTitle.c_str());
+    }
   }
   
   XBMC->QueueNotification(QUEUE_INFO, "%d recordings loaded.", m_recordings.size());
@@ -291,7 +293,6 @@ void Emby::TransferRecordings(ADDON_HANDLE handle)
     strncpy(tag.strPlot, recording.strPlot.c_str(), sizeof(tag.strPlot) -1);
     strncpy(tag.strChannelName, recording.strChannelName.c_str(), sizeof(tag.strChannelName) -1);
     strncpy(tag.strIconPath, recording.strIconPath.c_str(), sizeof(tag.strIconPath) -1);
-	  recording.strDirectory = "";
     strncpy(tag.strDirectory, recording.strDirectory.c_str(), sizeof(tag.strDirectory) -1);
     tag.recordingTime = recording.startTime;
     tag.iDuration = recording.iDuration;
@@ -310,12 +311,14 @@ int Emby::RESTGetRecordings(Json::Value& response)
 {
   cRest rest;
   std::string strUrl = m_strBaseUrl + URI_REST_RECORDINGS;
-  int retval = rest.Get(strUrl, "", response);
+  std::string params = StringUtils::Format("?UserId=%s&fields=Path",m_strUserId.c_str());
+  int retval = rest.Get(strUrl, params, response, m_strToken);
+
   if (retval >= 0)
   {
     if (response.type() == Json::objectValue)
     {
-		return response["TotalCount"].asInt();		
+      return response["Items"].size();
     }
     else
     {
@@ -388,26 +391,8 @@ PVR_ERROR Emby::GetTimers(ADDON_HANDLE handle)
     timer.iChannelId = *((unsigned int*)entry["ChannelId"].asCString());
     timer.iProgramId = *((unsigned int*)entry["ProgramId"].asCString());
 
-    sscanf(entry["StartDate"].asCString(), "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
-    tm time;
-    time.tm_year = y - 1900; // Year since 1900
-    time.tm_mon = M - 1;     // 0-11
-    time.tm_mday = d;        // 1-31
-    time.tm_hour = h;        // 0-23
-    time.tm_min = m;         // 0-59
-    time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
-
-    timer.startTime = timegm(&time);
-
-    sscanf(entry["EndDate"].asCString(), "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
-    time.tm_year = y - 1900; // Year since 1900
-    time.tm_mon = M - 1;     // 0-11
-    time.tm_mday = d;        // 1-31
-    time.tm_hour = h;        // 0-23
-    time.tm_min = m;         // 0-59
-    time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
-    
-    timer.endTime = timegm(&time);
+    timer.startTime = ISO8601ToTime(entry["StartDate"].asCString());
+    timer.endTime = ISO8601ToTime(entry["EndDate"].asCString());
     
     timer.iStartOffset = entry["PrePaddingSeconds"].asInt();
     timer.iEndOffset = entry["PostPaddingSeconds"].asInt();      
@@ -550,6 +535,19 @@ PVR_ERROR Emby::AddTimer(const PVR_TIMER &timer)
 }
 
 
+time_t Emby::ISO8601ToTime(const char* date) {
+  int y,M,d,h,m;
+  float s;
+  sscanf(date, "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
+  tm time;
+  time.tm_year = y - 1900; // Year since 1900
+  time.tm_mon = M - 1;     // 0-11
+  time.tm_mday = d;        // 1-31
+  time.tm_hour = h;        // 0-23
+  time.tm_min = m;         // 0-59
+  time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
+  return timegm(&time);
+}
 
 /************************************************************/
 /** EPG  */
@@ -572,31 +570,23 @@ PVR_ERROR Emby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel
     EPG_TAG epg;
     for (unsigned int i = 0; i < entries.size(); ++i)
     {
+      EmbyEpgEntry embyepg;
+
       Json::Value entry = entries[i];
       memset(&epg, 0, sizeof(EPG_TAG));
 
+      
       epg.iUniqueBroadcastId = *((unsigned int*)entry["Id"].asCString());
+      embyepg.iBroadcastId = epg.iUniqueBroadcastId;
+      embyepg.strEmbyBroadcastId = entry["Id"].asString();
+      
       epg.strTitle = entry["Name"].asCString();
       epg.iUniqueChannelId = iChannelId;
+      embyepg.iChannelId = iChannelId;
+      embyepg.strEmbyChannelId = entry["ChannelId"].asString();
 
-      sscanf(entry["StartDate"].asCString(), "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
-      tm time;
-      time.tm_year = y - 1900; // Year since 1900
-      time.tm_mon = M - 1;     // 0-11
-      time.tm_mday = d;        // 1-31
-      time.tm_hour = h;        // 0-23
-      time.tm_min = m;         // 0-59
-      time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
-      epg.startTime = timegm(&time);
-
-      sscanf(entry["EndDate"].asCString(), "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
-      time.tm_year = y - 1900; // Year since 1900
-      time.tm_mon = M - 1;     // 0-11
-      time.tm_mday = d;        // 1-31
-      time.tm_hour = h;        // 0-23
-      time.tm_min = m;         // 0-59
-      time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
-      epg.endTime = timegm(&time);
+      epg.startTime = ISO8601ToTime(entry["StartDate"].asCString());
+      epg.endTime = ISO8601ToTime(entry["EndDate"].asCString());
 
       //epg.startTime = static_cast<time_t>(entry["StartTime"].asDouble() / 1000);
       //epg.endTime = static_cast<time_t>(entry["EndTime"].asDouble() / 1000);
@@ -624,6 +614,8 @@ PVR_ERROR Emby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel
       if (entry["EpisodeTitle"]!= Json::nullValue)
         epg.strEpisodeName = entry["EpisodeTitle"].asCString();
       epg.iFlags = EPG_TAG_FLAG_UNDEFINED;
+
+      m_epg.push_back(embyepg);
 
       PVR->TransferEpgEntry(handle, &epg);
     }

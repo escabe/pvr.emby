@@ -58,16 +58,9 @@ struct EmbyChannelGroup
 struct EmbyEpgEntry
 {
   unsigned int iBroadcastId;
+  std::string strEmbyBroadcastId;
   unsigned int iChannelId;
-  int         iGenreType;
-  int         iGenreSubType;
-  time_t      startTime;
-  time_t      endTime;
-  std::string strTitle;
-  std::string strPlotOutline;
-  std::string strPlot;
-  std::string strIconPath;
-  std::string strGenreString;
+  std::string strEmbyChannelId;
 };
 
 struct EmbyEpgChannel
@@ -187,7 +180,8 @@ private:
   std::string GetChannelLogo(std::string params);
   std::string GetShortName(Json::Value entry);
   bool Login(void);
-  
+  time_t ISO8601ToTime(const char* date);
+
   void *Process(void);
     
   // members
@@ -202,6 +196,7 @@ private:
   std::string                       m_strUsername;
   std::string                       m_strPassword;
   std::string                       m_strToken;
+  std::string                       m_strUserId;
   int                               m_iBitrate;
   bool                              m_bTranscode;
   bool                              m_bUsePIN;
@@ -212,7 +207,7 @@ private:
   std::string                       m_strStid;
   bool                              m_bUpdating;  
   
-  std::vector<EmbyEpgChannel>       m_epg;    
+  std::vector<EmbyEpgEntry>       m_epg;    
   std::vector<EmbyChannel>          m_channels;  
   std::vector<EmbyRecording>        m_recordings; 
   std::vector<EmbyTimer>            m_timer;
