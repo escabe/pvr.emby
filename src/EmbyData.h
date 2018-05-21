@@ -132,6 +132,7 @@ public:
   unsigned int GetTimersAmount(void);
   PVR_ERROR GetTimers(ADDON_HANDLE handle);
   PVR_ERROR AddTimer(const PVR_TIMER &timer);    
+  PVR_ERROR DeleteTimer(const PVR_TIMER &timer);
 
   /* EPG */
   PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd);  
@@ -161,7 +162,7 @@ private:
   int RESTGetRecordings(Json::Value& response);
   int RESTGetTimer(Json::Value& response);  
   int RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value& response);
-
+  int RESTDeleteTimer(std::string id);
   int RESTAddTimer(std::string id, Json::Value& response);  
 
   // helper functions    

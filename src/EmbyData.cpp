@@ -418,6 +418,7 @@ PVR_ERROR Emby::GetTimers(ADDON_HANDLE handle)
     Json::Value entry = data[index];
 
     timer.iId = *((unsigned int*)entry["Id"].asCString());
+    timer.strEmbyId = entry["Id"].asString();
     timer.strTitle = entry["Name"].asString();
     timer.iChannelId = *((unsigned int*)entry["ChannelId"].asCString());
     timer.iProgramId = *((unsigned int*)entry["ProgramId"].asCString());
@@ -591,6 +592,46 @@ PVR_ERROR Emby::AddTimer(const PVR_TIMER &timer)
   return PVR_ERROR_SERVER_ERROR;
 }
 
+PVR_ERROR Emby::DeleteTimer(const PVR_TIMER &timer) {
+  // Find timer
+  for (const auto& t : m_timer)
+  {
+    if (t.iId == timer.iClientIndex)
+    {
+      int retval = RESTDeleteTimer(t.strEmbyId);  
+      if (retval < 0)
+      {
+        XBMC->Log(LOG_ERROR, "Timer not deleted.");
+        return PVR_ERROR_SERVER_ERROR;
+      }
+      return PVR_ERROR_NO_ERROR;
+    }
+  }
+  XBMC->Log(LOG_ERROR, "Timer not found so not deleted.");
+  return PVR_ERROR_SERVER_ERROR;
+}
+
+
+int Emby::RESTDeleteTimer(std::string id)
+{	
+
+  std::string strUrl = StringUtils::Format("%s/LiveTV/Timers/%s", m_strBaseUrl.c_str(), id.c_str());
+  cRest rest;
+  int retval = rest.Delete(strUrl, "", m_strToken);
+  if (retval >= 0)
+  {
+    PVR->TriggerTimerUpdate();
+    return 0;
+  }
+  else
+  {
+    XBMC->Log(LOG_DEBUG, "Request Timer failed. Return value: %i\n", retval);
+	  return -1;
+  }
+  
+  PVR->TriggerTimerUpdate();
+  return retval;
+}
 
 /************************************************************/
 /** EPG  */

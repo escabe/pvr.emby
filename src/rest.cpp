@@ -89,6 +89,25 @@ int cRest::Post(const std::string& command, const std::string& arguments, Json::
 	return retval;
 }
 
+
+int cRest::Delete(const std::string& strUrl, const std::string& arguments, const std::string& token)
+{
+	std::string response;
+	int retval;
+	
+	void* hFile = XBMC->CURLCreate(strUrl.c_str());
+	XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_PROTOCOL,"customrequest","DELETE");
+	XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"KodiPVR\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"0.1.0\"");
+	if (!token.empty())
+		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
+	if (XBMC->CURLOpen(hFile,0))
+	{
+		XBMC->CloseFile(hFile);
+		return 0;
+	}
+	return retval;
+}
+
 int httpRequest(const std::string& command, const std::string& arguments, const bool write, std::string& json_response, const std::string& token)
 {
 	//P8PLATFORM::CLockObject critsec(communication_mutex);		

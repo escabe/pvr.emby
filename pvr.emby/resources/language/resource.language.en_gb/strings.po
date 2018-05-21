@@ -33,7 +33,7 @@ msgid "Password"
 msgstr ""
 
 msgctxt "#30010"
-msgid "Streaming Options"
+msgid "Streaming Options (appended to end of stream URL)"
 msgstr ""
 
 msgctxt "#30011"

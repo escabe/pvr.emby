@@ -440,9 +440,13 @@ PVR_ERROR GetRecordings(ADDON_HANDLE handle, bool deleted)
 
 PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
 {
-  /* TODO: Implement this to get support for the timer features introduced with PVR API 1.9.7 */
+  memset(types,0,sizeof(PVR_TIMER_TYPE));
+  types[0].iId = PVR_TIMER_TYPE_NONE + 1;
+  types[0].iAttributes = PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE;
+  strcpy(types[0].strDescription,"PVR Emby Add-on only suports recordings based on EPG.");
   
-  return PVR_ERROR_NOT_IMPLEMENTED;
+  *size = 1;
+  return PVR_ERROR_NO_ERROR;
 }
 
 int GetTimersAmount(void)
@@ -458,7 +462,6 @@ PVR_ERROR GetTimers(ADDON_HANDLE handle)
   if (!EmbyData || !EmbyData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
 
-  /* TODO: Change implementation to get support for the timer features introduced with PVR API 1.9.7 */
   return EmbyData->GetTimers(handle);
 }
 
@@ -472,7 +475,12 @@ PVR_ERROR AddTimer(const PVR_TIMER &timer) {
 }
 
 PVR_ERROR DeleteTimer(const PVR_TIMER &timer, bool bForceDelete)  { 
-  return PVR_ERROR_NOT_IMPLEMENTED; 
+  
+  if (!EmbyData || !EmbyData->IsConnected())
+    return PVR_ERROR_SERVER_ERROR;
+
+  return EmbyData->DeleteTimer(timer);
+
 }
 
 
