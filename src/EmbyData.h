@@ -115,7 +115,6 @@ public:
   /* Common */
   const char* GetBackendName(void);
   const char* GetBackendVersion(void);
-  bool        IsSupported(const std::string& cap);
 
   /* Channels */
   unsigned int GetChannelsAmount(void);
@@ -162,8 +161,6 @@ private:
   int RESTGetRecordings(Json::Value& response);
   int RESTGetTimer(Json::Value& response);  
   int RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value& response);
-  int RESTGetStorage(Json::Value& response);
-  int RESTGetFolder(Json::Value& response);
 
   int RESTAddTimer(std::string id, Json::Value& response);  
 
@@ -172,13 +169,8 @@ private:
   void TransferChannels(ADDON_HANDLE handle);
   void TransferRecordings(ADDON_HANDLE handle);
   void TransferTimer(ADDON_HANDLE handle); 
-  bool replace(std::string& str, const std::string& from, const std::string& to);
-  bool IsRecordFolderSet(std::string& partitionId);
-  std::string GetStreamUrl(std::string params);
-  std::string GetTranscodeProfileValue();
-  std::string GetStid(int id);
+  std::string GetStreamUrl(std::string id, std::string params);
   std::string GetChannelLogo(std::string params);
-  std::string GetShortName(Json::Value entry);
   bool Login(void);
   time_t ISO8601ToTime(const char* date);
 
@@ -197,14 +189,13 @@ private:
   std::string                       m_strPassword;
   std::string                       m_strToken;
   std::string                       m_strUserId;
-  int                               m_iBitrate;
-  bool                              m_bTranscode;
-  bool                              m_bUsePIN;
+
+  std::string                       m_strLiveTVParameters;
+  std::string                       m_strRecordingParameters;
+
   int                               m_iPortWeb;    
   int                               m_iNumChannels;
   int                               m_iNumRecordings;  
-  std::string                       m_strPreviewMode;
-  std::string                       m_strStid;
   bool                              m_bUpdating;  
   
   std::vector<EmbyEpgEntry>       m_epg;    

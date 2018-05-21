@@ -54,6 +54,10 @@ int         g_iStartNumber        = 1;
 std::string g_strUserPath         = "";
 std::string g_strClientPath       = "";
 int         g_iEPGTimeShift       = 0;
+
+std::string g_strLiveTVParameters = "";
+std::string g_strRecordingParameters = "";
+
 CHelper_libXBMC_addon *XBMC       = NULL;
 CHelper_libXBMC_pvr   *PVR        = NULL;
 Emby                  *EmbyData   = NULL;
@@ -133,6 +137,26 @@ void ADDON_ReadSettings(void)
 	  g_strPassword = "";
   }  
   buffer[0] = 0; /* Set the end of string */
+
+  if (XBMC->GetSetting("livetvparameters", buffer))
+  {
+	  g_strLiveTVParameters = buffer;
+  }   
+  else 
+  {
+	  g_strLiveTVParameters = "";
+  }  
+  buffer[0] = 0; /* Set the end of string */
+
+  if (XBMC->GetSetting("recordingparameters", buffer))
+  {
+	  g_strRecordingParameters = buffer;
+  }   
+  else 
+  {
+	  g_strRecordingParameters = "";
+  }  
+  buffer[0] = 0; /* Set the end of string */  
 
   free (buffer);
 }
@@ -255,7 +279,26 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
       return ADDON_STATUS_NEED_RESTART;
     }    
   }
-
+  else if (str == "livetvparameters")
+  {
+    string strNew = (const char*)settingValue;
+    if (strNew != g_strLiveTVParameters)
+    {
+      g_strLiveTVParameters = strNew;
+      XBMC->Log(LOG_INFO, "%s - Changed Setting 'passwordm_strBaseUrl' from %s to %s", __FUNCTION__, g_strLiveTVParameters.c_str(), (const char*)settingValue);
+      return ADDON_STATUS_NEED_RESTART;
+    }    
+  }
+  else if (str == "recordingparameters")
+  {
+    string strNew = (const char*)settingValue;
+    if (strNew != g_strRecordingParameters)
+    {
+      g_strRecordingParameters = strNew;
+      XBMC->Log(LOG_INFO, "%s - Changed Setting 'passwordm_strBaseUrl' from %s to %s", __FUNCTION__, g_strRecordingParameters.c_str(), (const char*)settingValue);
+      return ADDON_STATUS_NEED_RESTART;
+    }    
+  }
   
   return ADDON_STATUS_OK;
 }
@@ -330,13 +373,7 @@ const char *GetConnectionString(void)
 
 PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 {   
-  if (!EmbyData || !EmbyData->IsConnected())
-	  return PVR_ERROR_SERVER_ERROR;
-
-  if (!EmbyData->IsSupported("storage"))
-	  return PVR_ERROR_NOT_IMPLEMENTED;	
-	
-  return EmbyData->GetStorageInfo(iTotal, iUsed);
+	return PVR_ERROR_NOT_IMPLEMENTED;	
 }
 
 int GetChannelsAmount(void)
@@ -434,6 +471,9 @@ PVR_ERROR AddTimer(const PVR_TIMER &timer) {
 
 }
 
+PVR_ERROR DeleteTimer(const PVR_TIMER &timer, bool bForceDelete)  { 
+  return PVR_ERROR_NOT_IMPLEMENTED; 
+}
 
 
 PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount) {
@@ -465,7 +505,6 @@ PVR_ERROR UpdateTimer(const PVR_TIMER &timer) { return PVR_ERROR_NOT_IMPLEMENTED
 PVR_ERROR SetRecordingLastPlayedPosition(const PVR_RECORDING &recording, int lastplayedposition) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR RenameRecording(const PVR_RECORDING &recording) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR DeleteRecording(const PVR_RECORDING &recording) { return PVR_ERROR_NOT_IMPLEMENTED; }
-PVR_ERROR DeleteTimer(const PVR_TIMER &timer, bool bForceDelete)  { return PVR_ERROR_NOT_IMPLEMENTED; }
 int GetRecordingLastPlayedPosition(const PVR_RECORDING &recording) { return PVR_ERROR_NOT_IMPLEMENTED; }
 bool OpenRecordedStream(const PVR_RECORDING &recording) { return false; }
 void CloseRecordedStream(void) {}

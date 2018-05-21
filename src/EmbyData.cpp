@@ -39,7 +39,7 @@ using namespace P8PLATFORM;
 /************************************************************/
 /** Class interface */
 
-Emby::Emby() :m_strBaseUrl(""), m_strStid(""), m_strToken(""), m_strPreviewMode(DEFAULT_PREVIEW_MODE)
+Emby::Emby() :m_strBaseUrl(""), m_strToken("")
 {   
   m_iPortWeb = g_iPortWeb;
   m_bIsConnected = false;      
@@ -48,6 +48,8 @@ Emby::Emby() :m_strBaseUrl(""), m_strStid(""), m_strToken(""), m_strPreviewMode(
   m_iNumRecordings = 0;  
   m_strUsername = g_strUsername;
   m_strPassword = g_strPassword;
+  m_strLiveTVParameters = g_strLiveTVParameters;
+  m_strRecordingParameters = g_strRecordingParameters;
 }
 
 void  *Emby::Process()
@@ -168,7 +170,7 @@ PVR_ERROR Emby::GetChannels(ADDON_HANDLE handle, bool bRadio)
     channel.iSubChannelNumber = 0;
     channel.iEncryptionSystem = 0;	
 
-    channel.strStreamURL = GetStreamUrl(entry["Id"].asString());    
+    channel.strStreamURL = GetStreamUrl(entry["Id"].asString(),m_strLiveTVParameters);    
     channel.strLogoPath = GetChannelLogo(entry["Id"].asString());
 
     m_iNumChannels++;
@@ -202,10 +204,39 @@ void Emby::TransferChannels(ADDON_HANDLE handle)
     tag.iSubChannelNumber = channel.iSubChannelNumber;
     tag.iEncryptionSystem = channel.iEncryptionSystem;	
     strncpy(tag.strChannelName, channel.strChannelName.c_str(), sizeof(tag.strChannelName));
-    strncpy(tag.strInputFormat, m_strPreviewMode.c_str(), sizeof(tag.strInputFormat));
     strncpy(tag.strIconPath, channel.strLogoPath.c_str(), sizeof(tag.strIconPath));
     PVR->TransferChannelEntry(handle, &tag);
   }
+}
+
+int Emby::RESTGetChannelList(Json::Value& response)
+{
+  XBMC->Log(LOG_DEBUG, "%s - get channel list entries via REST interface", __FUNCTION__);
+  int retval = -1;
+  cRest rest;  
+
+
+  std::string strUrl = m_strBaseUrl + URI_REST_CHANNELS;
+  retval = rest.Get(strUrl, "", response,m_strToken);
+  if (retval >= 0)
+  {
+    if (response.type() == Json::objectValue)
+    {
+      return response["Items"].size();
+    }
+    else
+    {
+      XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
+      return -1;
+    }
+  }
+  else
+  {
+    XBMC->Log(LOG_DEBUG, "Request Channel List failed. Return value: %i\n", retval);
+  }
+
+  
+  return retval;
 }
 
 
@@ -264,7 +295,7 @@ PVR_ERROR Emby::GetRecordings(ADDON_HANDLE handle)
       recording.iLastPlayedPosition = entry["UserData"]["PlaybackPositionTicks"].asInt64() / 10000000;
       
       //std::string params = GetPreviewParams(handle, entry);
-      recording.strStreamURL = GetStreamUrl(entry["Id"].asString());
+      recording.strStreamURL = GetStreamUrl(entry["Id"].asString(),m_strRecordingParameters);
       recording.strIconPath = GetChannelLogo(entry["Id"].asString());
       m_iNumRecordings++;
       m_recordings.push_back(recording);
@@ -561,20 +592,6 @@ PVR_ERROR Emby::AddTimer(const PVR_TIMER &timer)
 }
 
 
-time_t Emby::ISO8601ToTime(const char* date) {
-  int y,M,d,h,m;
-  float s;
-  sscanf(date, "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
-  tm time;
-  time.tm_year = y - 1900; // Year since 1900
-  time.tm_mon = M - 1;     // 0-11
-  time.tm_mday = d;        // 1-31
-  time.tm_hour = h;        // 0-23
-  time.tm_min = m;         // 0-59
-  time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
-  return timegm(&time);
-}
-
 /************************************************************/
 /** EPG  */
 
@@ -644,11 +661,6 @@ PVR_ERROR Emby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel
   return PVR_ERROR_SERVER_ERROR;
 }
 
-unsigned int Emby::GetEventId(long long EntryId) 
-{
-	return (unsigned int)((EntryId >> 32) & 0xFFFFFFFFL);
-}
-
 bool Emby::GetEPG(std::string id, time_t iStart, time_t iEnd, Json::Value& data)
 {   
   int retval = RESTGetEpg(id, iStart, iEnd, data);
@@ -692,36 +704,11 @@ int Emby::RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value& re
   return retval;
 }
 
-std::string Emby::GetTranscodeProfileValue()
-{
-  std::string strProfile;
-  if (!m_bTranscode)
-  {
-    strProfile= StringUtils::Format("%s.Native.NR", m_strPreviewMode.c_str());
-  }
-  else
-  {
-    strProfile= StringUtils::Format("%s.%ik.HR", m_strPreviewMode.c_str(), m_iBitrate);
-  }
-
-  return strProfile;
-}
-
-std::string Emby::GetStreamUrl(std::string params)
+std::string Emby::GetStreamUrl(std::string id,std::string params)
 {
   std::string strTmp;
-  strTmp = StringUtils::Format("%s/Videos/%s/stream?static=true", m_strBaseUrl.c_str(), params.c_str());
+  strTmp = StringUtils::Format("%s/Videos/%s/stream%s", m_strBaseUrl.c_str(), id.c_str(), params.c_str());
   return strTmp;
-}
-
-std::string Emby::GetStid(int defaultStid)
-{ 
-  if (m_strStid == "")
-  {    
-    m_strStid= StringUtils::Format("_xbmc%i", defaultStid);
-  }
-    
-  return m_strStid;
 }
 
 std::string Emby::GetChannelLogo(std::string params)
@@ -731,18 +718,6 @@ std::string Emby::GetChannelLogo(std::string params)
   return strTmp;
 }
 
-std::string Emby::GetShortName(Json::Value entry)
-{
-  std::string strShortName;
-  if (entry["shortName"].isNull()) 
-  {
-    strShortName = entry["DisplayName"].asString();
-    if (strShortName == "") { strShortName = entry["Name"].asString(); }
-    StringUtils::Replace(strShortName, " ", "_");
-  }
-  
-  return strShortName;
-}
 
 bool Emby::IsConnected()
 {
@@ -787,145 +762,6 @@ unsigned int Emby::GetChannelsAmount()
 }
 
 
-
-bool Emby::IsRecordFolderSet(std::string& partitionId)
-{
-	Json::Value data;
-	int retval = RESTGetFolder(data); // get folder config
-	if (retval <= 0) return false;
-	
-	for (unsigned int i = 0; i < data.size(); i++)
-	{
-		Json::Value folder = data[i];
-		if (folder["Type"].asString() == "record") { 
-			partitionId = folder["DevicePartitionId"].asString();
-			return true;
-		}
-	}
-
-	return false;
-}
-
-
-int Emby::RESTGetFolder(Json::Value& response)
-{
-	XBMC->Log(LOG_DEBUG, "%s - get folder config via REST interface", __FUNCTION__);
-
-  cRest rest;
-	std::string strUrl = m_strBaseUrl + URI_REST_FOLDER;
-	int retval = rest.Get(strUrl, "", response);
-	if (retval >= 0)
-	{
-		if (response.type() == Json::arrayValue)
-		{
-			return response.size();
-		}
-		else
-		{
-			XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
-			return -1;
-		}
-	}
-	else
-	{
-		XBMC->Log(LOG_DEBUG, "Request folder data failed. Return value: %i\n", retval);
-	}
-
-	return retval;
-}
-
-int Emby::RESTGetStorage(Json::Value& response)
-{
-	XBMC->Log(LOG_DEBUG, "%s - get storage data via REST interface", __FUNCTION__);
-
-	cRest rest;
-	std::string strUrl = m_strBaseUrl + URI_REST_STORAGE;
-	int retval = rest.Get(strUrl, "", response);
-	if (retval >= 0)
-	{
-		if (response.type() == Json::arrayValue)
-		{
-			return response.size();
-		}
-		else
-		{
-			XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
-			return -1;
-		}
-	}
-	else
-	{
-		XBMC->Log(LOG_DEBUG, "Request storage data failed. Return value: %i\n", retval);
-	}
-	
-	return retval;
-}
-
-PVR_ERROR Emby::GetStorageInfo(long long *total, long long *used)
-{
-	m_partitions.clear();
-	std::string strPartitionId = "";
-	
-	bool isRecordFolder = IsRecordFolderSet(strPartitionId);
-	
-	if (isRecordFolder) {
-		Json::Value data;
-
-		int retval = RESTGetStorage(data); // get storage data
-		if (retval <= 0)
-		{
-			XBMC->Log(LOG_ERROR, "No storage available.");
-			return PVR_ERROR_SERVER_ERROR;
-		}
-
-		for (unsigned int i = 0; i < data.size(); i++)
-		{
-			Json::Value storage = data[i];
-			std::string deviceId = storage["Id"].asString();
-			Json::Value devicePartitions = storage["Partitions"];
-			
-			int iCount = devicePartitions.size();
-			if (iCount > 0) {
-				for (int p = 0; p < iCount; p++)
-				{
-					Json::Value partition;
-					partition = devicePartitions[p];
-
-					std::string strDevicePartitionId;
-					strDevicePartitionId= StringUtils::Format("%s.%s", deviceId.c_str(), partition["Id"].asString().c_str());
-
-					if (strDevicePartitionId == strPartitionId)
-          {
-						uint32_t size = partition["Size"].asUInt();
-						uint32_t available = partition["Available"].asUInt();						
-
-						*total = size;
-						*used = (size - available);
-						
-						/* Convert from kBytes to Bytes */
-						*total *= 1024;
-						*used *= 1024;
-						return PVR_ERROR_NO_ERROR;
-					}
-				}
-			}
-		}		
-	}
-
-	return PVR_ERROR_SERVER_ERROR;
-}
-
-
-bool Emby::replace(std::string& str, const std::string& from, const std::string& to) {
-  size_t start_pos = str.find(from);
-  if (start_pos == std::string::npos)
-    return false;
-
-  str.replace(start_pos, from.length(), to);
-  return true;
-}
-
-
 int Emby::ReadLiveStream(unsigned char *pBuffer, unsigned int iBufferSize)
 {
   return 0;
@@ -952,92 +788,20 @@ long long Emby::LengthLiveStream(void)
 * \brief Get a channel list from Emby Device via REST interface
 * \param id The channel list id
 */
-int Emby::RESTGetChannelList(Json::Value& response)
-{
-  XBMC->Log(LOG_DEBUG, "%s - get channel list entries via REST interface", __FUNCTION__);
-  int retval = -1;
-  cRest rest;  
 
-
-  std::string strUrl = m_strBaseUrl + URI_REST_CHANNELS;
-  retval = rest.Get(strUrl, "", response,m_strToken);
-  if (retval >= 0)
-  {
-    if (response.type() == Json::objectValue)
-    {
-      return response["Items"].size();
-    }
-    else
-    {
-      XBMC->Log(LOG_DEBUG, "Unknown response format. Expected Json::arrayValue\n");
-      return -1;
-    }
-  }
-  else
-  {
-    XBMC->Log(LOG_DEBUG, "Request Channel List failed. Return value: %i\n", retval);
-  }
-
-  
-  return retval;
+time_t Emby::ISO8601ToTime(const char* date) {
+  int y,M,d,h,m;
+  float s;
+  sscanf(date, "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
+  tm time;
+  time.tm_year = y - 1900; // Year since 1900
+  time.tm_mon = M - 1;     // 0-11
+  time.tm_mday = d;        // 1-31
+  time.tm_hour = h;        // 0-23
+  time.tm_min = m;         // 0-59
+  time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
+  return timegm(&time);
 }
 
-bool Emby::IsSupported(const std::string& cap)
-{
-	return false;
-}
-
-
-const char SAFE[256] =
-{
-  /*      0 1 2 3  4 5 6 7  8 9 A B  C D E F */
-  /* 0 */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  /* 1 */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  /* 2 */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  /* 3 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
-
-  /* 4 */ 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-  /* 5 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
-  /* 6 */ 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-  /* 7 */ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
-
-  /* 8 */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  /* 9 */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  /* A */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  /* B */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-
-  /* C */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  /* D */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  /* E */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  /* F */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-};
-
-
-std::string Emby::URLEncodeInline(const std::string& sSrc)
-{
-  const char DEC2HEX[16 + 1] = "0123456789ABCDEF";
-  const unsigned char * pSrc = (const unsigned char *)sSrc.c_str();
-  const int SRC_LEN = sSrc.length();
-  unsigned char * const pStart = new unsigned char[SRC_LEN * 3];
-  unsigned char * pEnd = pStart;
-  const unsigned char * const SRC_END = pSrc + SRC_LEN;
-
-  for (; pSrc < SRC_END; ++pSrc)
-  {
-    if (SAFE[*pSrc])
-      *pEnd++ = *pSrc;
-    else
-    {
-      // escape this char
-      *pEnd++ = '%';
-      *pEnd++ = DEC2HEX[*pSrc >> 4];
-      *pEnd++ = DEC2HEX[*pSrc & 0x0F];
-    }
-  }
-
-  std::string sResult((char *)pStart, (char *)pEnd);
-  delete[] pStart;
-  return sResult;
-}
 
 
