@@ -1,4 +1,4 @@
-project(pvr.emby)
+project(pvr.jellyfin)
 
 cmake_minimum_required(VERSION 2.6)
 
@@ -19,18 +19,18 @@ include_directories(${kodiplatform_INCLUDE_DIRS}
 set(DEPLIBS ${p8-platform_LIBRARIES}
             ${JSONCPP_LIBRARIES})
 
-set(EMBY_SOURCES src/client.cpp
+set(JELLYFIN_SOURCES src/client.cpp
                  src/md5.cpp
-                 src/EmbyData.cpp
+                 src/JellyfinData.cpp
                  src/rest.cpp
                  src/base64.cpp)
 
-set(EMBY_HEADERS src/client.h
+set(JELLYFIN_HEADERS src/client.h
                  src/md5.h
-                 src/EmbyData.h
+                 src/JellyfinData.h
                  src/rest.h
                  src/base64.h)
 
-build_addon(pvr.emby EMBY DEPLIBS)
+build_addon(pvr.jellyfin JELLYFIN DEPLIBS)
 
 include(CPack)

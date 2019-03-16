@@ -23,7 +23,7 @@
 #include "client.h"
 #include "xbmc_pvr_dll.h"
 #include <stdlib.h>
-#include "EmbyData.h"
+#include "JellyfinData.h"
 #include "p8-platform/util/util.h"
 #include <p8-platform/util/StringUtils.h>
 
@@ -37,7 +37,7 @@ using namespace ADDON;
 bool           m_bCreated         = false;
 ADDON_STATUS   m_CurStatus        = ADDON_STATUS_UNKNOWN;
 
-EmbyChannel    m_currentChannel;
+JellyfinChannel    m_currentChannel;
 
 /* User adjustable settings are saved here.
  * Default values are defined inside client.h
@@ -60,7 +60,7 @@ std::string g_strRecordingParameters = "";
 
 CHelper_libXBMC_addon *XBMC       = NULL;
 CHelper_libXBMC_pvr   *PVR        = NULL;
-Emby                  *EmbyData   = NULL;
+Jellyfin                  *JellyfinData   = NULL;
 
 
 extern std::string PathCombine(const std::string &strPath, const std::string &strFileName)
@@ -175,7 +175,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
     return ADDON_STATUS_PERMANENT_FAILURE;
   }
 
-  XBMC->Log(LOG_DEBUG, "%s - Creating Emby Systems PVR-Client", __FUNCTION__);
+  XBMC->Log(LOG_DEBUG, "%s - Creating Jellyfin Systems PVR-Client", __FUNCTION__);
 
   PVR = new CHelper_libXBMC_pvr;
   if (!PVR->RegisterMe(hdl))
@@ -197,11 +197,11 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
   
   ADDON_ReadSettings();
 
-  EmbyData = new Emby;
+  JellyfinData = new Jellyfin;
 
-  if (!EmbyData->Open())
+  if (!JellyfinData->Open())
   {
-    SAFE_DELETE(EmbyData);
+    SAFE_DELETE(JellyfinData);
     SAFE_DELETE(PVR);
     SAFE_DELETE(XBMC);
     m_CurStatus = ADDON_STATUS_LOST_CONNECTION;
@@ -216,7 +216,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 ADDON_STATUS ADDON_GetStatus()
 {
   /* check whether we're still connected */
-  if (m_CurStatus == ADDON_STATUS_OK && !EmbyData->IsConnected())
+  if (m_CurStatus == ADDON_STATUS_OK && !JellyfinData->IsConnected())
     m_CurStatus = ADDON_STATUS_LOST_CONNECTION;
 
   return m_CurStatus;
@@ -229,7 +229,7 @@ void ADDON_Destroy()
     m_bCreated = false;
   }
     
-  SAFE_DELETE(EmbyData);
+  SAFE_DELETE(JellyfinData);
   SAFE_DELETE(PVR);
   SAFE_DELETE(XBMC);
 
@@ -345,13 +345,13 @@ PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
 
 const char *GetBackendName(void)
 {  
-  static const char *strBackendName = EmbyData ? EmbyData->GetBackendName() : "unknown";
+  static const char *strBackendName = JellyfinData ? JellyfinData->GetBackendName() : "unknown";
   return strBackendName;
 }
 
 const char *GetBackendVersion(void)
 {
-  static const char *strBackendVersion = EmbyData ? EmbyData->GetBackendVersion() : "unknown";  
+  static const char *strBackendVersion = JellyfinData ? JellyfinData->GetBackendVersion() : "unknown";  
   return strBackendVersion;
 }
 
@@ -364,8 +364,8 @@ const char *GetConnectionString(void)
 {
   //static std::string strConnectionString = "connected";
   static std::string strConnectionString;
-  if (EmbyData)
-    strConnectionString= StringUtils::Format("%s%s", g_strHostname.c_str(), EmbyData->IsConnected() ? "" : " (Not connected!)");
+  if (JellyfinData)
+    strConnectionString= StringUtils::Format("%s%s", g_strHostname.c_str(), JellyfinData->IsConnected() ? "" : " (Not connected!)");
   else
     strConnectionString= StringUtils::Format("%s (addon error!)", g_strHostname.c_str());
   return strConnectionString.c_str();
@@ -378,28 +378,28 @@ PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 
 int GetChannelsAmount(void)
 {
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return -1;
 
-  return EmbyData->GetChannelsAmount();
+  return JellyfinData->GetChannelsAmount();
 }
 
 PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio)
 {
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
 
-  return EmbyData->GetChannels(handle, bRadio);  
+  return JellyfinData->GetChannels(handle, bRadio);  
 }
 
 bool OpenLiveStream(const PVR_CHANNEL &channel)
 {
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return false;
     
   CloseLiveStream();
 
-  if (EmbyData->GetChannel(channel, m_currentChannel))
+  if (JellyfinData->GetChannel(channel, m_currentChannel))
   {    
     return true;
   }  
@@ -409,33 +409,33 @@ bool OpenLiveStream(const PVR_CHANNEL &channel)
 
 void CloseLiveStream(void)
 {  
-  if (EmbyData) {
-    EmbyData->CloseLiveStream();
+  if (JellyfinData) {
+    JellyfinData->CloseLiveStream();
   }  
 }
 
 PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
   
-  return EmbyData->GetEPGForChannel(handle, channel, iStart, iEnd);
+  return JellyfinData->GetEPGForChannel(handle, channel, iStart, iEnd);
 }
 
 int GetRecordingsAmount(bool deleted)
 {
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
 
-  return EmbyData->GetRecordingsAmount();
+  return JellyfinData->GetRecordingsAmount();
 }
 
 PVR_ERROR GetRecordings(ADDON_HANDLE handle, bool deleted)
 {
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
 
-  return EmbyData->GetRecordings(handle);
+  return JellyfinData->GetRecordings(handle);
 }
 
 PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
@@ -443,7 +443,7 @@ PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
   memset(types,0,sizeof(PVR_TIMER_TYPE));
   types[0].iId = PVR_TIMER_TYPE_NONE + 1;
   types[0].iAttributes = PVR_TIMER_TYPE_REQUIRES_EPG_TAG_ON_CREATE;
-  strcpy(types[0].strDescription,"PVR Emby Add-on only suports recordings based on EPG.");
+  strcpy(types[0].strDescription,"PVR Jellyfin Add-on only suports recordings based on EPG.");
   
   *size = 1;
   return PVR_ERROR_NO_ERROR;
@@ -451,51 +451,51 @@ PVR_ERROR GetTimerTypes(PVR_TIMER_TYPE types[], int *size)
 
 int GetTimersAmount(void)
 {
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return 0;
 
-  return EmbyData->GetTimersAmount();
+  return JellyfinData->GetTimersAmount();
 }
 
 PVR_ERROR GetTimers(ADDON_HANDLE handle)
 {
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
 
-  return EmbyData->GetTimers(handle);
+  return JellyfinData->GetTimers(handle);
 }
 
 PVR_ERROR AddTimer(const PVR_TIMER &timer) { 
   
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
 
-  return EmbyData->AddTimer(timer);
+  return JellyfinData->AddTimer(timer);
 
 }
 
 PVR_ERROR DeleteTimer(const PVR_TIMER &timer, bool bForceDelete)  { 
   
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
 
-  return EmbyData->DeleteTimer(timer);
+  return JellyfinData->DeleteTimer(timer);
 
 }
 
 
 PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount) {
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
 
-  return EmbyData->GetChannelStreamProperties(channel, properties, iPropertiesCount);
+  return JellyfinData->GetChannelStreamProperties(channel, properties, iPropertiesCount);
 }
 
 PVR_ERROR GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount) {
-  if (!EmbyData || !EmbyData->IsConnected())
+  if (!JellyfinData || !JellyfinData->IsConnected())
     return PVR_ERROR_SERVER_ERROR;
 
-  return EmbyData->GetRecordingStreamProperties(recording, properties, iPropertiesCount);
+  return JellyfinData->GetRecordingStreamProperties(recording, properties, iPropertiesCount);
 }
 
 /** UNUSED API FUNCTIONS */
@@ -546,4 +546,5 @@ PVR_ERROR IsEPGTagPlayable(const EPG_TAG*, bool*) { return PVR_ERROR_NOT_IMPLEME
 PVR_ERROR IsEPGTagRecordable(const EPG_TAG*, bool*) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR GetEPGTagStreamProperties(const EPG_TAG*, PVR_NAMED_VALUE*, unsigned int*) { return PVR_ERROR_NOT_IMPLEMENTED; }
 PVR_ERROR GetEPGTagEdl(const EPG_TAG* epgTag, PVR_EDL_ENTRY edl[], int *size) { return PVR_ERROR_NOT_IMPLEMENTED; }
+PVR_ERROR GetStreamReadChunkSize(int* chunksize) { return PVR_ERROR_NOT_IMPLEMENTED; }
 }

@@ -7,7 +7,7 @@
 //#include "tinyxml/tinyxml.h"
 #include <json/json.h>
 
-#define EMBY_REST_INTERFACE false
+#define Jellyfin_REST_INTERFACE false
 
 #define CHANNELDATAVERSION  2
 
@@ -20,16 +20,16 @@ public:
   bool Get(const std::string &strURL, std::string &strResult);
 };
 
-typedef enum EMBY_UPDATE_STATE
+typedef enum Jellyfin_UPDATE_STATE
 {
-  EMBY_UPDATE_STATE_NONE,
-  EMBY_UPDATE_STATE_FOUND,
-  EMBY_UPDATE_STATE_UPDATED,
-  EMBY_UPDATE_STATE_NEW
-} EMBY_UPDATE_STATE;
+  Jellyfin_UPDATE_STATE_NONE,
+  Jellyfin_UPDATE_STATE_FOUND,
+  Jellyfin_UPDATE_STATE_UPDATED,
+  Jellyfin_UPDATE_STATE_NEW
+} Jellyfin_UPDATE_STATE;
 
 
-struct EmbyChannel
+struct JellyfinChannel
 {
   bool        bRadio;
   unsigned int iUniqueId;
@@ -39,15 +39,15 @@ struct EmbyChannel
   std::string strChannelName;
   std::string strLogoPath;
   std::string strStreamURL; 
-  std::string strEmbyId; 
+  std::string strJellyfinId; 
 
-  bool operator < (const EmbyChannel& channel) const
+  bool operator < (const JellyfinChannel& channel) const
   {
 	  return (strChannelName.compare(channel.strChannelName) < 0);
   }
 };
 
-struct EmbyChannelGroup
+struct JellyfinChannelGroup
 {
   bool              bRadio;
   int               iGroupId;
@@ -55,28 +55,28 @@ struct EmbyChannelGroup
   std::vector<int>  members;
 };
 
-struct EmbyEpgEntry
+struct JellyfinEpgEntry
 {
   unsigned int iBroadcastId;
-  std::string strEmbyBroadcastId;
+  std::string strJellyfinBroadcastId;
   unsigned int iChannelId;
-  std::string strEmbyChannelId;
+  std::string strJellyfinChannelId;
 };
 
-struct EmbyEpgChannel
+struct JellyfinEpgChannel
 {
   std::string               strId;
   std::string               strName;
-  std::vector<EmbyEpgEntry> epg;
+  std::vector<JellyfinEpgEntry> epg;
 };
 
-struct EmbyTimer
+struct JellyfinTimer
 {
   unsigned int    iId;
   std::string     strTitle;
   unsigned int    iChannelId;
   unsigned int    iProgramId;
-  std::string     strEmbyId;
+  std::string     strJellyfinId;
   time_t          startTime;
   time_t          endTime;
   int             iStartOffset;
@@ -86,7 +86,7 @@ struct EmbyTimer
   PVR_TIMER_STATE state;  
 };
 
-struct EmbyRecording
+struct JellyfinRecording
 {
   std::string strRecordingId;
   time_t      startTime;
@@ -101,12 +101,12 @@ struct EmbyRecording
   std::string strIconPath;
 };
 
-class Emby : public P8PLATFORM::CThread
+class Jellyfin : public P8PLATFORM::CThread
 {
 public:
   /* Class interface */
-  Emby(void);
-  ~Emby();
+  Jellyfin(void);
+  ~Jellyfin();
 
   /* Server */
   bool Open();  
@@ -118,7 +118,7 @@ public:
 
   /* Channels */
   unsigned int GetChannelsAmount(void);
-  bool GetChannel(const PVR_CHANNEL &channel, EmbyChannel &myChannel);
+  bool GetChannel(const PVR_CHANNEL &channel, JellyfinChannel &myChannel);
   PVR_ERROR GetChannels(ADDON_HANDLE handle, bool bRadio);
   PVR_ERROR GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount);
 
@@ -155,7 +155,7 @@ private:
   bool GetFreeConfig();
   unsigned int GetEventId(long long EntryId);
   /*
-  * \brief Get a channel list from Emby Device via REST interface
+  * \brief Get a channel list from Jellyfin Device via REST interface
   * \param id The channel list id
   */
   int RESTGetChannelList(Json::Value& response);
@@ -199,10 +199,10 @@ private:
   int                               m_iNumRecordings;  
   bool                              m_bUpdating;  
   
-  std::vector<EmbyEpgEntry>       m_epg;    
-  std::vector<EmbyChannel>          m_channels;  
-  std::vector<EmbyRecording>        m_recordings; 
-  std::vector<EmbyTimer>            m_timer;
+  std::vector<JellyfinEpgEntry>       m_epg;    
+  std::vector<JellyfinChannel>          m_channels;  
+  std::vector<JellyfinRecording>        m_recordings; 
+  std::vector<JellyfinTimer>            m_timer;
   std::vector<std::string>			m_partitions;
 
 };

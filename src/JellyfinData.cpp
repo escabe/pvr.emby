@@ -1,4 +1,4 @@
-#include "EmbyData.h"
+#include "JellyfinData.h"
 
 #include "client.h"
 
@@ -39,7 +39,7 @@ using namespace P8PLATFORM;
 /************************************************************/
 /** Class interface */
 
-Emby::Emby() :m_strBaseUrl(""), m_strToken("")
+Jellyfin::Jellyfin() :m_strBaseUrl(""), m_strToken("")
 {   
   m_iPortWeb = g_iPortWeb;
   m_bIsConnected = false;      
@@ -52,7 +52,7 @@ Emby::Emby() :m_strBaseUrl(""), m_strToken("")
   m_strRecordingParameters = g_strRecordingParameters;
 }
 
-void  *Emby::Process()
+void  *Jellyfin::Process()
 {
   XBMC->Log(LOG_DEBUG, "%s - starting", __FUNCTION__);
 
@@ -62,7 +62,7 @@ void  *Emby::Process()
   return NULL;
 }
 
-Emby::~Emby()
+Jellyfin::~Jellyfin()
 {
   CLockObject lock(m_mutex);
   XBMC->Log(LOG_DEBUG, "%s Stopping update thread...", __FUNCTION__);
@@ -78,11 +78,11 @@ Emby::~Emby()
   
 }
 
-bool Emby::Open()
+bool Jellyfin::Open()
 {
   CLockObject lock(m_mutex);
 
-  XBMC->Log(LOG_NOTICE, "%s - Emby Systems Addon Configuration options", __FUNCTION__);
+  XBMC->Log(LOG_NOTICE, "%s - Jellyfin Systems Addon Configuration options", __FUNCTION__);
   XBMC->Log(LOG_NOTICE, "%s - Hostname: '%s'", __FUNCTION__, g_strHostname.c_str());
   XBMC->Log(LOG_NOTICE, "%s - WebPort: '%d'", __FUNCTION__, m_iPortWeb);
 
@@ -94,7 +94,7 @@ bool Emby::Open()
 // Perform login
   m_bIsConnected = Login();
   if (!m_bIsConnected) {
-    XBMC->Log(LOG_ERROR, "%s It seem's that Emby cannot be reached. Make sure that you set the correct configuration options in the addon settings!", __FUNCTION__);
+    XBMC->Log(LOG_ERROR, "%s It seem's that Jellyfin cannot be reached. Make sure that you set the correct configuration options in the addon settings!", __FUNCTION__);
     return false;
   }
 
@@ -110,7 +110,7 @@ bool Emby::Open()
   return IsRunning();
 }
 
-bool Emby::Login(void) {
+bool Jellyfin::Login(void) {
   int retval;
   cRest rest;
   Json::Value response;  
@@ -133,14 +133,14 @@ bool Emby::Login(void) {
   return false;
 }
 
-void Emby::CloseLiveStream(void)
+void Jellyfin::CloseLiveStream(void)
 {
   XBMC->Log(LOG_DEBUG, "CloseLiveStream");  
 }
 
 /************************************************************/
 /** Channels  */
-PVR_ERROR Emby::GetChannels(ADDON_HANDLE handle, bool bRadio) 
+PVR_ERROR Jellyfin::GetChannels(ADDON_HANDLE handle, bool bRadio) 
 {
   XBMC->Log(LOG_DEBUG, "%s", __FUNCTION__);
   m_iNumChannels = 0;
@@ -158,12 +158,12 @@ PVR_ERROR Emby::GetChannels(ADDON_HANDLE handle, bool bRadio)
   data = data["Items"];
   for (unsigned int index = 0; index < data.size(); ++index)
   {
-    EmbyChannel channel;
+    JellyfinChannel channel;
     Json::Value entry;
 
     entry = data[index];
     
-    channel.strEmbyId = entry["Id"].asString();
+    channel.strJellyfinId = entry["Id"].asString();
     channel.iUniqueId = *((unsigned int*)entry["Id"].asCString());
     channel.strChannelName = entry["Name"].asString();  
     channel.iChannelNumber = stoi(entry["ChannelNumber"].asString());
@@ -191,12 +191,12 @@ PVR_ERROR Emby::GetChannels(ADDON_HANDLE handle, bool bRadio)
 }
 
 
-void Emby::TransferChannels(ADDON_HANDLE handle)
+void Jellyfin::TransferChannels(ADDON_HANDLE handle)
 {
   for (unsigned int i = 0; i < m_channels.size(); i++)
   {
     std::string strTmp;
-    EmbyChannel &channel = m_channels.at(i);
+    JellyfinChannel &channel = m_channels.at(i);
     PVR_CHANNEL tag;
     memset(&tag, 0, sizeof(PVR_CHANNEL));
     tag.iUniqueId = channel.iUniqueId;
@@ -209,7 +209,7 @@ void Emby::TransferChannels(ADDON_HANDLE handle)
   }
 }
 
-int Emby::RESTGetChannelList(Json::Value& response)
+int Jellyfin::RESTGetChannelList(Json::Value& response)
 {
   XBMC->Log(LOG_DEBUG, "%s - get channel list entries via REST interface", __FUNCTION__);
   int retval = -1;
@@ -240,20 +240,20 @@ int Emby::RESTGetChannelList(Json::Value& response)
 }
 
 
-bool Emby::LoadChannels()
+bool Jellyfin::LoadChannels()
 {
   PVR->TriggerChannelUpdate();
   return true;  
 }
 
-PVR_ERROR Emby::GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
+PVR_ERROR Jellyfin::GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
   std:string strUrl;
-  for (const auto& EmbyChannel : m_channels)
+  for (const auto& JellyfinChannel : m_channels)
   {
-    if (EmbyChannel.iUniqueId == channel->iUniqueId)
+    if (JellyfinChannel.iUniqueId == channel->iUniqueId)
     {
-      strUrl = EmbyChannel.strStreamURL;
+      strUrl = JellyfinChannel.strStreamURL;
     }
   }
 
@@ -273,7 +273,7 @@ PVR_ERROR Emby::GetChannelStreamProperties(const PVR_CHANNEL* channel, PVR_NAMED
 /************************************************************/
 /** Recordings  */
 
-PVR_ERROR Emby::GetRecordings(ADDON_HANDLE handle)
+PVR_ERROR Jellyfin::GetRecordings(ADDON_HANDLE handle)
 {  
   m_iNumRecordings = 0;
   m_recordings.clear();
@@ -284,7 +284,7 @@ PVR_ERROR Emby::GetRecordings(ADDON_HANDLE handle)
     data = data["Items"];
     for (unsigned int index = 0; index < data.size(); ++index)
     {
-      EmbyRecording recording;
+      JellyfinRecording recording;
       Json::Value entry = data[index];
 
       recording.strRecordingId = entry["Id"].asString();
@@ -311,11 +311,11 @@ PVR_ERROR Emby::GetRecordings(ADDON_HANDLE handle)
   return PVR_ERROR_NO_ERROR;
 }
 
-void Emby::TransferRecordings(ADDON_HANDLE handle)
+void Jellyfin::TransferRecordings(ADDON_HANDLE handle)
 {
   for (unsigned int i = 0; i<m_recordings.size(); i++)
   {    
-    EmbyRecording &recording = m_recordings.at(i);
+    JellyfinRecording &recording = m_recordings.at(i);
     PVR_RECORDING tag;
     memset(&tag, 0, sizeof(PVR_RECORDING));
     strncpy(tag.strRecordingId, recording.strRecordingId.c_str(), sizeof(tag.strRecordingId) -1);
@@ -338,7 +338,7 @@ void Emby::TransferRecordings(ADDON_HANDLE handle)
   }
 }
 
-int Emby::RESTGetRecordings(Json::Value& response)
+int Jellyfin::RESTGetRecordings(Json::Value& response)
 {
   cRest rest;
   std::string strUrl = m_strBaseUrl + URI_REST_RECORDINGS;
@@ -365,18 +365,18 @@ int Emby::RESTGetRecordings(Json::Value& response)
   return retval;
 }
 
-unsigned int Emby::GetRecordingsAmount() {
+unsigned int Jellyfin::GetRecordingsAmount() {
   return m_iNumRecordings;
 }
 
-PVR_ERROR Emby::GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
+PVR_ERROR Jellyfin::GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR_NAMED_VALUE* properties, unsigned int* iPropertiesCount)
 {
   std:string strRecordingFile;
-  for (const auto& EmbyRec : m_recordings)
+  for (const auto& JellyfinRec : m_recordings)
   {
-    if (strcmp(EmbyRec.strRecordingId.c_str(), recording->strRecordingId)== 0)
+    if (strcmp(JellyfinRec.strRecordingId.c_str(), recording->strRecordingId)== 0)
     {
-      strRecordingFile = EmbyRec.strStreamURL;
+      strRecordingFile = JellyfinRec.strStreamURL;
     }
   }
 
@@ -392,12 +392,12 @@ PVR_ERROR Emby::GetRecordingStreamProperties(const PVR_RECORDING* recording, PVR
 /************************************************************/
 /** Timer */
 
-unsigned int Emby::GetTimersAmount(void)
+unsigned int Jellyfin::GetTimersAmount(void)
 {  
 	return m_timer.size();
 }
 
-PVR_ERROR Emby::GetTimers(ADDON_HANDLE handle)
+PVR_ERROR Jellyfin::GetTimers(ADDON_HANDLE handle)
 {  
   int y,M,d,h,m;
   float s;
@@ -414,11 +414,11 @@ PVR_ERROR Emby::GetTimers(ADDON_HANDLE handle)
 
   for (unsigned int index = 0; index < data.size(); ++index)
   {
-    EmbyTimer timer;
+    JellyfinTimer timer;
     Json::Value entry = data[index];
 
     timer.iId = *((unsigned int*)entry["Id"].asCString());
-    timer.strEmbyId = entry["Id"].asString();
+    timer.strJellyfinId = entry["Id"].asString();
     timer.strTitle = entry["Name"].asString();
     timer.iChannelId = *((unsigned int*)entry["ChannelId"].asCString());
     timer.iProgramId = *((unsigned int*)entry["ProgramId"].asCString());
@@ -459,12 +459,12 @@ PVR_ERROR Emby::GetTimers(ADDON_HANDLE handle)
   return PVR_ERROR_NO_ERROR;
 }
 
-void Emby::TransferTimer(ADDON_HANDLE handle)
+void Jellyfin::TransferTimer(ADDON_HANDLE handle)
 {
   for (unsigned int i = 0; i<m_timer.size(); i++)
   {
     std::string strTmp;
-    EmbyTimer &timer = m_timer.at(i);
+    JellyfinTimer &timer = m_timer.at(i);
     PVR_TIMER tag;
     memset(&tag, 0, sizeof(PVR_TIMER));
 
@@ -486,7 +486,7 @@ void Emby::TransferTimer(ADDON_HANDLE handle)
   }
 }
 
-int Emby::RESTGetTimer(Json::Value& response)
+int Jellyfin::RESTGetTimer(Json::Value& response)
 {
   cRest rest;
   std::string strUrl = m_strBaseUrl + URI_REST_TIMER;
@@ -513,7 +513,7 @@ int Emby::RESTGetTimer(Json::Value& response)
 }
 
 
-int Emby::RESTAddTimer(std::string id, Json::Value& response)
+int Jellyfin::RESTAddTimer(std::string id, Json::Value& response)
 {	
 
   // Get empty timer
@@ -552,17 +552,17 @@ int Emby::RESTAddTimer(std::string id, Json::Value& response)
   return retval;
 }
 
-PVR_ERROR Emby::AddTimer(const PVR_TIMER &timer) 
+PVR_ERROR Jellyfin::AddTimer(const PVR_TIMER &timer) 
 {
   // Find the Channel
   std:string strChannelId;
-  for (const auto& EmbyChannel : m_channels)
+  for (const auto& JellyfinChannel : m_channels)
   {
-    if (EmbyChannel.iUniqueId == (unsigned int)timer.iClientChannelUid)
+    if (JellyfinChannel.iUniqueId == (unsigned int)timer.iClientChannelUid)
     {
-      strChannelId = EmbyChannel.strEmbyId;
+      strChannelId = JellyfinChannel.strJellyfinId;
       XBMC->Log(LOG_DEBUG, "AddTimer Found ChannelID: %s.",strChannelId.c_str());
-      // Grab the EPG from Emby for this channel
+      // Grab the EPG from Jellyfin for this channel
       Json::Value data;  
       int retval = RESTGetEpg(strChannelId, 0, 0, data);
       if (retval < 0)
@@ -592,13 +592,13 @@ PVR_ERROR Emby::AddTimer(const PVR_TIMER &timer)
   return PVR_ERROR_SERVER_ERROR;
 }
 
-PVR_ERROR Emby::DeleteTimer(const PVR_TIMER &timer) {
+PVR_ERROR Jellyfin::DeleteTimer(const PVR_TIMER &timer) {
   // Find timer
   for (const auto& t : m_timer)
   {
     if (t.iId == timer.iClientIndex)
     {
-      int retval = RESTDeleteTimer(t.strEmbyId);  
+      int retval = RESTDeleteTimer(t.strJellyfinId);  
       if (retval < 0)
       {
         XBMC->Log(LOG_ERROR, "Timer not deleted.");
@@ -612,7 +612,7 @@ PVR_ERROR Emby::DeleteTimer(const PVR_TIMER &timer) {
 }
 
 
-int Emby::RESTDeleteTimer(std::string id)
+int Jellyfin::RESTDeleteTimer(std::string id)
 {	
 
   std::string strUrl = StringUtils::Format("%s/LiveTV/Timers/%s", m_strBaseUrl.c_str(), id.c_str());
@@ -636,17 +636,17 @@ int Emby::RESTDeleteTimer(std::string id)
 /************************************************************/
 /** EPG  */
 
-PVR_ERROR Emby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
+PVR_ERROR Jellyfin::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
   XBMC->Log(LOG_DEBUG, "%s - Channel: %s\n", __FUNCTION__, channel.strChannelName);
   int y,M,d,h,m;
   float s;
 
   Json::Value data;
-  for (vector<EmbyChannel>::iterator myChannel = m_channels.begin(); myChannel < m_channels.end(); ++myChannel)
+  for (vector<JellyfinChannel>::iterator myChannel = m_channels.begin(); myChannel < m_channels.end(); ++myChannel)
   {
     if (myChannel->iUniqueId != channel.iUniqueId) continue;
-	  if (!GetEPG(myChannel->strEmbyId, iStart, iEnd, data)) continue;
+	  if (!GetEPG(myChannel->strJellyfinId, iStart, iEnd, data)) continue;
     Json::Value entries = data["Items"];
     if (entries.size() <= 0) continue;
 
@@ -702,7 +702,7 @@ PVR_ERROR Emby::GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel
   return PVR_ERROR_SERVER_ERROR;
 }
 
-bool Emby::GetEPG(std::string id, time_t iStart, time_t iEnd, Json::Value& data)
+bool Jellyfin::GetEPG(std::string id, time_t iStart, time_t iEnd, Json::Value& data)
 {   
   int retval = RESTGetEpg(id, iStart, iEnd, data);
   if (retval < 0)
@@ -716,7 +716,7 @@ bool Emby::GetEPG(std::string id, time_t iStart, time_t iEnd, Json::Value& data)
 }
 
 
-int Emby::RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value& response)
+int Jellyfin::RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value& response)
 {
   std::string strParams;
   //strParams= StringUtils::Format("?ids=%d&extended=1&start=%d&end=%d", id, iStart * 1000, iEnd * 1000);
@@ -745,14 +745,14 @@ int Emby::RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value& re
   return retval;
 }
 
-std::string Emby::GetStreamUrl(std::string id,std::string params)
+std::string Jellyfin::GetStreamUrl(std::string id,std::string params)
 {
   std::string strTmp;
   strTmp = StringUtils::Format("%s/Videos/%s/stream%s", m_strBaseUrl.c_str(), id.c_str(), params.c_str());
   return strTmp;
 }
 
-std::string Emby::GetChannelLogo(std::string params)
+std::string Jellyfin::GetChannelLogo(std::string params)
 {
   std::string strTmp;
   strTmp = StringUtils::Format("%s/Items/%s/Images/Primary", m_strBaseUrl.c_str(), params.c_str());
@@ -760,27 +760,27 @@ std::string Emby::GetChannelLogo(std::string params)
 }
 
 
-bool Emby::IsConnected()
+bool Jellyfin::IsConnected()
 {
   return m_bIsConnected;
 }
 
 
-const char* Emby::GetBackendName()
+const char* Jellyfin::GetBackendName()
 {
   return m_strBackendName.c_str();
 }
 
-const char* Emby::GetBackendVersion()
+const char* Jellyfin::GetBackendVersion()
 {
   return m_strBackendVersion.c_str();
 }
 
-bool Emby::GetChannel(const PVR_CHANNEL &channel, EmbyChannel &myChannel)
+bool Jellyfin::GetChannel(const PVR_CHANNEL &channel, JellyfinChannel &myChannel)
 {
   for (unsigned int iChannelPtr = 0; iChannelPtr < m_channels.size(); iChannelPtr++)
   {    
-    EmbyChannel &thisChannel = m_channels.at(iChannelPtr);
+    JellyfinChannel &thisChannel = m_channels.at(iChannelPtr);
     if (thisChannel.iUniqueId == channel.iUniqueId)
     {
       myChannel.iUniqueId = thisChannel.iUniqueId;
@@ -797,28 +797,28 @@ bool Emby::GetChannel(const PVR_CHANNEL &channel, EmbyChannel &myChannel)
   return false;
 }
 
-unsigned int Emby::GetChannelsAmount()
+unsigned int Jellyfin::GetChannelsAmount()
 {
   return m_channels.size();
 }
 
 
-int Emby::ReadLiveStream(unsigned char *pBuffer, unsigned int iBufferSize)
+int Jellyfin::ReadLiveStream(unsigned char *pBuffer, unsigned int iBufferSize)
 {
   return 0;
 }
 
-long long Emby::SeekLiveStream(long long iPosition, int iWhence /* = SEEK_SET */)
+long long Jellyfin::SeekLiveStream(long long iPosition, int iWhence /* = SEEK_SET */)
 {
   return 0;
 }
 
-long long Emby::PositionLiveStream(void)
+long long Jellyfin::PositionLiveStream(void)
 {
   return 0;
 }
 
-long long Emby::LengthLiveStream(void)
+long long Jellyfin::LengthLiveStream(void)
 {
   return 0;
 }
@@ -826,11 +826,11 @@ long long Emby::LengthLiveStream(void)
 /* ################ misc ################ */
 
 /*
-* \brief Get a channel list from Emby Device via REST interface
+* \brief Get a channel list from Jellyfin Device via REST interface
 * \param id The channel list id
 */
 
-time_t Emby::ISO8601ToTime(const char* date) {
+time_t Jellyfin::ISO8601ToTime(const char* date) {
   int y,M,d,h,m;
   float s;
   sscanf(date, "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);

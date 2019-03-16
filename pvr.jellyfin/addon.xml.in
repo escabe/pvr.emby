@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon
-  id="pvr.emby"
+  id="pvr.jellyfin"
   version="0.1.0"
-  name="Emby Client"
+  name="Jellyfin Client"
   provider-name="EscAbe">
   <requires>@ADDON_DEPENDS@</requires>
   <extension
     point="xbmc.pvrclient"
     library_@PLATFORM@="@LIBRARY_FILENAME@"/>
   <extension point="xbmc.addon.metadata">
-    <summary lang="en_GB">PVR Client to connect Emby to Kodi</summary>
-    <description lang="en_GB">Emby frontend. Supporting streaming of Live TV &amp; Recordings, EPG View, Timers.</description>
+    <summary lang="en_GB">PVR Client to connect Jellyfin to Kodi</summary>
+    <description lang="en_GB">Jellyfin frontend. Supporting streaming of Live TV &amp; Recordings, EPG View, Timers.</description>
     <disclaimer lang="en_GB">This is unstable software! The authors are in no way responsible for failed playings, incorrect EPG times, wasted hours, or any other undesirable effects.</disclaimer>
     <platform>@PLATFORM@</platform>
   </extension>
