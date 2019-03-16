@@ -1,0 +1,12 @@
+git clone https://github.com/xbmc/xbmc kodi-android
+git clone https://github.com/escabe/repo-binary-addons.git
+cd ~/kodi-android/
+git checkout 18.1-Leia 
+cd tools/depends/
+export ADDONS_DEFINITION_DIR=~/repo-binary-addons
+./bootstrap
+./configure --with-tarballs=$HOME/android-tools/xbmc-tarballs --host=aarch64-linux-android --with-sdk-path=$HOME/android-tools/android-sdk-linux --with-ndk-path=$HOME/android-tools/android-ndk-r18 --with-toolchain=$HOME/android-tools/aarch64-linux-android-vanilla/android-21 --prefix=$HOME/android-tools/xbmc-depends
+make -j8
+cd ~/kodi-android/
+make -j8 -C tools/depends/target/binary-addons ADDONS="pvr.jellyfin"
+
