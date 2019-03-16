@@ -452,7 +452,7 @@ PVR_ERROR Jellyfin::GetTimers(ADDON_HANDLE handle)
     XBMC->Log(LOG_DEBUG, "%s loaded Timer entry '%s'", __FUNCTION__, timer.strTitle.c_str());
   }
   
-  XBMC->QueueNotification(QUEUE_INFO, "%d timer loaded.", m_timer.size());
+  //XBMC->QueueNotification(QUEUE_INFO, "%d timer loaded.", m_timer.size());
   
   TransferTimer(handle);
 
