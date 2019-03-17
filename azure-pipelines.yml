@@ -16,6 +16,7 @@ steps:
     command: Run an image
     imageName: escabe/pvr.jellyfin-build:18.1
     volumes: $(Build.ArtifactStagingDirectory):/output
+    runInBackground: false
 
 - task: PublishBuildArtifacts@1
   inputs:
