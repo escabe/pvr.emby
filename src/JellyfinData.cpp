@@ -21,6 +21,7 @@
 #define URI_REST_EPG            "/LiveTv/Programs"
 #define URI_REST_STORAGE        "/TVC/user/data/storage"
 #define URI_REST_FOLDER	        "/TVC/user/data/folder"
+#define URI_REST_SERVERINFO     "/System/Info"
 
 #define DEFAULT_TV_PIN          "0000"
 
@@ -110,6 +111,18 @@ bool Jellyfin::Open()
   return IsRunning();
 }
 
+void Jellyfin::GetServerInfo(void) {
+  int retval;
+  Json::Value response; 
+  std::string strUrl = m_strBaseUrl + URI_REST_SERVERINFO;
+  retval = this->rest.Get(strUrl, "", response, m_strToken);
+  if (retval != E_FAILED)
+  {
+    m_strBackendName = response["ProductName"].asString();
+    m_strBackendVersion = response["Version"].asString();
+  }
+}
+
 bool Jellyfin::Login(void) {
   int retval;
   
@@ -128,6 +141,7 @@ bool Jellyfin::Login(void) {
     // Store token and user Id
     m_strToken = response["AccessToken"].asString();
     m_strUserId = response["User"]["Id"].asString();
+    GetServerInfo();
     return true;
   }
   return false;

@@ -175,7 +175,7 @@ private:
   std::string GetChannelLogo(std::string params);
   bool Login(void);
   time_t ISO8601ToTime(const char* date);
-
+  void GetServerInfo(void);
   void *Process(void);
     
   // members
