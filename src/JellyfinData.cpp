@@ -112,7 +112,7 @@ bool Jellyfin::Open()
 
 bool Jellyfin::Login(void) {
   int retval;
-  cRest rest;
+  
   Json::Value response;  
   // Build login data
   Json::Value data;  
@@ -122,7 +122,7 @@ bool Jellyfin::Login(void) {
   std::string strdata = fastWriter.write(data);
   // Perform the request
   std::string strUrl = m_strBaseUrl + URI_REST_AUTHENTICATEBYNAME;
-  retval = rest.Post(strUrl, strdata, response);
+  retval = this->rest.Post(strUrl, strdata, response);
   if (retval != E_FAILED)
   {
     // Store token and user Id
@@ -213,11 +213,11 @@ int Jellyfin::RESTGetChannelList(Json::Value& response)
 {
   XBMC->Log(LOG_DEBUG, "%s - get channel list entries via REST interface", __FUNCTION__);
   int retval = -1;
-  cRest rest;  
+    
 
 
   std::string strUrl = m_strBaseUrl + URI_REST_CHANNELS;
-  retval = rest.Get(strUrl, "", response,m_strToken);
+  retval = this->rest.Get(strUrl, "", response,m_strToken);
   if (retval >= 0)
   {
     if (response.type() == Json::objectValue)
@@ -340,10 +340,10 @@ void Jellyfin::TransferRecordings(ADDON_HANDLE handle)
 
 int Jellyfin::RESTGetRecordings(Json::Value& response)
 {
-  cRest rest;
+  
   std::string strUrl = m_strBaseUrl + URI_REST_RECORDINGS;
   std::string params = StringUtils::Format("?UserId=%s&fields=Path",m_strUserId.c_str());
-  int retval = rest.Get(strUrl, params, response, m_strToken);
+  int retval = this->rest.Get(strUrl, params, response, m_strToken);
 
   if (retval >= 0)
   {
@@ -488,9 +488,9 @@ void Jellyfin::TransferTimer(ADDON_HANDLE handle)
 
 int Jellyfin::RESTGetTimer(Json::Value& response)
 {
-  cRest rest;
+  
   std::string strUrl = m_strBaseUrl + URI_REST_TIMER;
-  int retval = rest.Get(strUrl, "", response,m_strToken);
+  int retval = this->rest.Get(strUrl, "", response,m_strToken);
 
   if (retval >= 0)
   {
@@ -519,9 +519,9 @@ int Jellyfin::RESTAddTimer(std::string id, Json::Value& response)
   // Get empty timer
   std::string strUrl = m_strBaseUrl + "/LiveTV/Timers/Defaults";
   std::string strQueryString = StringUtils::Format("?ProgramId=%s",id.c_str());
-  cRest rest;
+  
 
-  int retval = rest.Get(strUrl, strQueryString, response,m_strToken);
+  int retval = this->rest.Get(strUrl, strQueryString, response,m_strToken);
 
   if (retval >= 0)
   {
@@ -532,7 +532,7 @@ int Jellyfin::RESTAddTimer(std::string id, Json::Value& response)
       Json::FastWriter fastWriter;
       std::string strdata = fastWriter.write(response);
       strUrl = m_strBaseUrl + "/LiveTV/Timers";
-      retval = rest.Post(strUrl,strdata,r2,m_strToken);
+      retval = this->rest.Post(strUrl,strdata,r2,m_strToken);
       return 0;
     }
     else
@@ -616,8 +616,8 @@ int Jellyfin::RESTDeleteTimer(std::string id)
 {	
 
   std::string strUrl = StringUtils::Format("%s/LiveTV/Timers/%s", m_strBaseUrl.c_str(), id.c_str());
-  cRest rest;
-  int retval = rest.Delete(strUrl, "", m_strToken);
+  
+  int retval = this->rest.Delete(strUrl, "", m_strToken);
   if (retval >= 0)
   {
     PVR->TriggerTimerUpdate();
@@ -722,9 +722,9 @@ int Jellyfin::RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value
   //strParams= StringUtils::Format("?ids=%d&extended=1&start=%d&end=%d", id, iStart * 1000, iEnd * 1000);
   strParams= StringUtils::Format("?ChannelIds=%s&fields=Overview", id.c_str());
   
-  cRest rest;
+  
   std::string strUrl = m_strBaseUrl + URI_REST_EPG;
-  int retval = rest.Get(strUrl, strParams, response,m_strToken);
+  int retval = this->rest.Get(strUrl, strParams, response,m_strToken);
   if (retval >= 0)
   {
     if (response.type() == Json::objectValue)

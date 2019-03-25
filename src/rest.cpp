@@ -18,6 +18,8 @@
 */
 #include "rest.h"
 #include "base64.h"
+
+#include <p8-platform/util/StringUtils.h>
 #include <memory>
 #include <vector>
 #include <stdlib.h>
@@ -29,7 +31,7 @@ int cRest::Get(const std::string& command, const std::string& arguments, Json::V
 {
 	std::string response;
 	int retval;
-	retval = httpRequest(command, arguments, false, response,token);
+	retval = this->httpRequest(command, arguments, false, response,token);
 
 	if (retval != E_FAILED)
 	{
@@ -61,7 +63,7 @@ int cRest::Post(const std::string& command, const std::string& arguments, Json::
 {
 	std::string response;
 	int retval;
-	retval = httpRequest(command, arguments, true, response, token);
+	retval = this->httpRequest(command, arguments, true, response, token);
 
 	if (retval != E_FAILED)
 	{
@@ -97,7 +99,7 @@ int cRest::Delete(const std::string& strUrl, const std::string& arguments, const
 	
 	void* hFile = XBMC->CURLCreate(strUrl.c_str());
 	XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_PROTOCOL,"customrequest","DELETE");
-	XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"KodiPVR\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"0.1.0\"");
+	XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Authorization",this->getAuthorization().c_str());
 	if (!token.empty())
 		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
 	if (XBMC->CURLOpen(hFile,0))
@@ -108,7 +110,7 @@ int cRest::Delete(const std::string& strUrl, const std::string& arguments, const
 	return retval;
 }
 
-int httpRequest(const std::string& command, const std::string& arguments, const bool write, std::string& json_response, const std::string& token)
+int cRest::httpRequest(const std::string& command, const std::string& arguments, const bool write, std::string& json_response, const std::string& token)
 {
 	//P8PLATFORM::CLockObject critsec(communication_mutex);		
 	std::string strUrl = command;
@@ -117,7 +119,7 @@ int httpRequest(const std::string& command, const std::string& arguments, const 
 		void* hFile = XBMC->CURLCreate(strUrl.c_str());
 		std::string data = base64_encode(arguments.c_str(),arguments.length());
 		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_PROTOCOL,"postdata",data.c_str());
-		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"KodiPVR\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"0.1.0\"");
+		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Authorization",this->getAuthorization().c_str());
 		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Content-Type","application/json");
 		if (!token.empty())
 			XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
@@ -138,7 +140,7 @@ int httpRequest(const std::string& command, const std::string& arguments, const 
 		strUrl += arguments;
 
 		void* fileHandle = XBMC->CURLCreate(strUrl.c_str());
-		XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_HEADER,"Authorization","MediaBrowser Client=\"KodiPVR\", Device=\"Ubuntu\", DeviceId=\"42\", Version=\"0.1.0\"");
+		XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_HEADER,"Authorization",this->getAuthorization().c_str());
 		if (!token.empty())
 			XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
 		XBMC->CURLOpen(fileHandle,0);
@@ -159,3 +161,30 @@ int httpRequest(const std::string& command, const std::string& arguments, const 
 	return -1;
 }
 
+std::string cRest::getAuthorization() {
+	
+	if (this->authorization.empty()) {
+		// Check whether UUID file exists.
+		std::string uuidFile = GetUserFilePath("uuid");
+		std::string uuid;
+		char buffer[37];
+		void *fHandle;
+		if (XBMC->FileExists(uuidFile.c_str(),false)) {
+			// If so read UUID from file
+			fHandle = XBMC->OpenFile(uuidFile.c_str(),XFILE::READ_NO_CACHE);
+			XBMC->ReadFile(fHandle,buffer,36);
+			XBMC->CloseFile(fHandle);
+			buffer[36] = '\0';
+			uuid = buffer;
+		} else {
+			// If not create
+			uuid = StringUtils::CreateUUID();
+			fHandle = XBMC->OpenFileForWrite(uuidFile.c_str(),false);
+			XBMC->WriteFile(fHandle,uuid.c_str(),uuid.length());
+			XBMC->CloseFile(fHandle);
+		}
+		// Form full string
+		this->authorization = StringUtils::Format("MediaBrowser Client=\"Kodi PVR\", Device=\"Kodi\", DeviceId=\"%s\", Version=\"0.1.0\"",uuid.c_str());
+	}
+	return this->authorization;
+}

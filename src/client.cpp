@@ -186,7 +186,6 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
   }
 
   m_CurStatus = ADDON_STATUS_UNKNOWN;
-  
   g_strUserPath = pvrprops->strUserPath;
   g_strClientPath = pvrprops->strClientPath;
 

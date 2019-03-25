@@ -150,6 +150,7 @@ public:
   PVR_ERROR GetStorageInfo(long long *total, long long *used);
   
 private:
+  cRest rest;
   // helper functions    
   bool LoadChannels();  
   bool GetFreeConfig();
