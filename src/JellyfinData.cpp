@@ -89,7 +89,7 @@ bool Jellyfin::Open()
 
   // Set base url
   std::string strURL = "";
-  strURL= StringUtils::Format("http://%s%s:%u", strURL.c_str(), g_strHostname.c_str(), m_iPortWeb);
+  strURL= StringUtils::Format("https://%s%s:%u", strURL.c_str(), g_strHostname.c_str(), m_iPortWeb);
   m_strBaseUrl = strURL;
 
 // Perform login

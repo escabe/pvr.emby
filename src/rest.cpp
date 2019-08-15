@@ -100,6 +100,7 @@ int cRest::Delete(const std::string& strUrl, const std::string& arguments, const
 	void* hFile = XBMC->CURLCreate(strUrl.c_str());
 	XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_PROTOCOL,"customrequest","DELETE");
 	XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Authorization",this->getAuthorization().c_str());
+	XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_PROTOCOL,"verifypeer","false");
 	if (!token.empty())
 		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
 	if (XBMC->CURLOpen(hFile,0))
@@ -119,6 +120,7 @@ int cRest::httpRequest(const std::string& command, const std::string& arguments,
 		void* hFile = XBMC->CURLCreate(strUrl.c_str());
 		std::string data = base64_encode(arguments.c_str(),arguments.length());
 		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_PROTOCOL,"postdata",data.c_str());
+		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_PROTOCOL,"verifypeer","false");
 		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Authorization",this->getAuthorization().c_str());
 		XBMC->CURLAddOption(hFile,XFILE::CURL_OPTION_HEADER,"Content-Type","application/json");
 		if (!token.empty())
@@ -141,6 +143,7 @@ int cRest::httpRequest(const std::string& command, const std::string& arguments,
 
 		void* fileHandle = XBMC->CURLCreate(strUrl.c_str());
 		XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_HEADER,"Authorization",this->getAuthorization().c_str());
+		XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_PROTOCOL,"verifypeer","false");
 		if (!token.empty())
 			XBMC->CURLAddOption(fileHandle,XFILE::CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
 		XBMC->CURLOpen(fileHandle,0);
