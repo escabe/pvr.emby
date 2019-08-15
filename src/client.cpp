@@ -44,7 +44,8 @@ JellyfinChannel    m_currentChannel;
  * and exported to the other source files.
  */
 std::string g_strHostname         = DEFAULT_HOST;
-int         g_iPortWeb            = DEFAULT_WEB_PORT;
+int         g_iPortHTTP           = DEFAULT_HTTP_PORT;
+int         g_iPortHTTPS          = DEFAULT_HTTPS_PORT;
 std::string g_strAuth             = DEFAULT_AUTH;
 std::string g_strUsername         = "";
 std::string g_strPassword         = "";
@@ -113,10 +114,16 @@ void ADDON_ReadSettings(void)
   buffer[0] = 0; /* Set the end of string */
 
   /* Read setting "webport" from settings.xml */
-  if (!XBMC->GetSetting("webport", &g_iPortWeb)) 
+  if (!XBMC->GetSetting("httpport", &g_iPortHTTP)) 
   {
-	  g_iPortWeb = DEFAULT_WEB_PORT;
+	  g_iPortHTTP = DEFAULT_HTTP_PORT;
   }  
+
+  /* Read setting "webport" from settings.xml */
+  if (!XBMC->GetSetting("httpsport", &g_iPortHTTPS)) 
+  {
+	  g_iPortHTTPS = DEFAULT_HTTPS_PORT;
+  }    
 
   if (XBMC->GetSetting("username", buffer))
   {
@@ -248,13 +255,23 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
       return ADDON_STATUS_NEED_RESTART;
     }    
   }
-  else if (str == "webport")
+  else if (str == "httpport")
   {
     int iNewValue = *(int*) settingValue;
-    if (g_iPortWeb != iNewValue)
+    if (g_iPortHTTP != iNewValue)
     {
-      g_iPortWeb = iNewValue;
-      XBMC->Log(LOG_INFO, "%s - Changed Setting 'webport' from %u to %u", __FUNCTION__, g_iPortWeb, iNewValue);      
+      g_iPortHTTP = iNewValue;
+      XBMC->Log(LOG_INFO, "%s - Changed Setting 'httpport' from %u to %u", __FUNCTION__, g_iPortHTTP, iNewValue);      
+      return ADDON_STATUS_NEED_RESTART;
+    }
+  }
+    else if (str == "httpsport")
+  {
+    int iNewValue = *(int*) settingValue;
+    if (g_iPortHTTPS != iNewValue)
+    {
+      g_iPortHTTPS = iNewValue;
+      XBMC->Log(LOG_INFO, "%s - Changed Setting 'httpsport' from %u to %u", __FUNCTION__, g_iPortHTTPS, iNewValue);      
       return ADDON_STATUS_NEED_RESTART;
     }
   }

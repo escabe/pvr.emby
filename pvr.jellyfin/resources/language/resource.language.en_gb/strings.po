@@ -21,7 +21,11 @@ msgid "Hostname or IP address"
 msgstr ""
 
 msgctxt "#30001"
-msgid "Port"
+msgid "HTTP Port"
+msgstr ""
+
+msgctxt "#30004"
+msgid "HTTPS Port"
 msgstr ""
 
 msgctxt "#30002"

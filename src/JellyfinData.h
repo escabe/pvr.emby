@@ -184,7 +184,8 @@ private:
 
   bool                              m_bIsConnected;  
   std::string                       m_strHostname;
-  std::string                       m_strBaseUrl;
+  std::string                       m_strBaseHTTPUrl;
+  std::string                       m_strBaseHTTPSUrl;
   std::string                       m_strBackendName;
   std::string                       m_strBackendVersion;
   std::string                       m_strUsername;
@@ -195,7 +196,8 @@ private:
   std::string                       m_strLiveTVParameters;
   std::string                       m_strRecordingParameters;
 
-  int                               m_iPortWeb;    
+  int                               m_iPortHTTP;    
+  int                               m_iPortHTTPS;    
   int                               m_iNumChannels;
   int                               m_iNumRecordings;  
   bool                              m_bUpdating;  

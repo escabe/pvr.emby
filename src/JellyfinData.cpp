@@ -40,9 +40,10 @@ using namespace P8PLATFORM;
 /************************************************************/
 /** Class interface */
 
-Jellyfin::Jellyfin() :m_strBaseUrl(""), m_strToken("")
+Jellyfin::Jellyfin() :m_strBaseHTTPSUrl(""), m_strToken("")
 {   
-  m_iPortWeb = g_iPortWeb;
+  m_iPortHTTP = g_iPortHTTP;
+  m_iPortHTTPS = g_iPortHTTPS;
   m_bIsConnected = false;      
   m_bUpdating = false;  
   m_iNumChannels = 0;
@@ -85,12 +86,12 @@ bool Jellyfin::Open()
 
   XBMC->Log(LOG_NOTICE, "%s - Jellyfin Systems Addon Configuration options", __FUNCTION__);
   XBMC->Log(LOG_NOTICE, "%s - Hostname: '%s'", __FUNCTION__, g_strHostname.c_str());
-  XBMC->Log(LOG_NOTICE, "%s - WebPort: '%d'", __FUNCTION__, m_iPortWeb);
+  XBMC->Log(LOG_NOTICE, "%s - HTTPPort: '%d'", __FUNCTION__, m_iPortHTTP);
+  XBMC->Log(LOG_NOTICE, "%s - HTTPSPort: '%d'", __FUNCTION__, m_iPortHTTPS);
 
-  // Set base url
-  std::string strURL = "";
-  strURL= StringUtils::Format("https://%s%s:%u", strURL.c_str(), g_strHostname.c_str(), m_iPortWeb);
-  m_strBaseUrl = strURL;
+  // Set base urls
+  m_strBaseHTTPUrl = StringUtils::Format("http://%s:%u", g_strHostname.c_str(), m_iPortHTTP);
+  m_strBaseHTTPSUrl = StringUtils::Format("https://%s:%u", g_strHostname.c_str(), m_iPortHTTPS);
 
 // Perform login
   m_bIsConnected = Login();
@@ -114,7 +115,7 @@ bool Jellyfin::Open()
 void Jellyfin::GetServerInfo(void) {
   int retval;
   Json::Value response; 
-  std::string strUrl = m_strBaseUrl + URI_REST_SERVERINFO;
+  std::string strUrl = m_strBaseHTTPSUrl + URI_REST_SERVERINFO;
   retval = this->rest.Get(strUrl, "", response, m_strToken);
   if (retval != E_FAILED)
   {
@@ -134,7 +135,7 @@ bool Jellyfin::Login(void) {
   data["pw"] = m_strPassword;
   std::string strdata = fastWriter.write(data);
   // Perform the request
-  std::string strUrl = m_strBaseUrl + URI_REST_AUTHENTICATEBYNAME;
+  std::string strUrl = m_strBaseHTTPSUrl + URI_REST_AUTHENTICATEBYNAME;
   retval = this->rest.Post(strUrl, strdata, response);
   if (retval != E_FAILED)
   {
@@ -230,7 +231,7 @@ int Jellyfin::RESTGetChannelList(Json::Value& response)
     
 
 
-  std::string strUrl = m_strBaseUrl + URI_REST_CHANNELS;
+  std::string strUrl = m_strBaseHTTPSUrl + URI_REST_CHANNELS;
   retval = this->rest.Get(strUrl, "", response,m_strToken);
   if (retval >= 0)
   {
@@ -355,7 +356,7 @@ void Jellyfin::TransferRecordings(ADDON_HANDLE handle)
 int Jellyfin::RESTGetRecordings(Json::Value& response)
 {
   
-  std::string strUrl = m_strBaseUrl + URI_REST_RECORDINGS;
+  std::string strUrl = m_strBaseHTTPSUrl + URI_REST_RECORDINGS;
   std::string params = StringUtils::Format("?UserId=%s&fields=Path",m_strUserId.c_str());
   int retval = this->rest.Get(strUrl, params, response, m_strToken);
 
@@ -503,7 +504,7 @@ void Jellyfin::TransferTimer(ADDON_HANDLE handle)
 int Jellyfin::RESTGetTimer(Json::Value& response)
 {
   
-  std::string strUrl = m_strBaseUrl + URI_REST_TIMER;
+  std::string strUrl = m_strBaseHTTPSUrl + URI_REST_TIMER;
   int retval = this->rest.Get(strUrl, "", response,m_strToken);
 
   if (retval >= 0)
@@ -531,7 +532,7 @@ int Jellyfin::RESTAddTimer(std::string id, Json::Value& response)
 {	
 
   // Get empty timer
-  std::string strUrl = m_strBaseUrl + "/LiveTV/Timers/Defaults";
+  std::string strUrl = m_strBaseHTTPSUrl + "/LiveTV/Timers/Defaults";
   std::string strQueryString = StringUtils::Format("?ProgramId=%s",id.c_str());
   
 
@@ -545,7 +546,7 @@ int Jellyfin::RESTAddTimer(std::string id, Json::Value& response)
       // POST to create timer
       Json::FastWriter fastWriter;
       std::string strdata = fastWriter.write(response);
-      strUrl = m_strBaseUrl + "/LiveTV/Timers";
+      strUrl = m_strBaseHTTPSUrl + "/LiveTV/Timers";
       retval = this->rest.Post(strUrl,strdata,r2,m_strToken);
       return 0;
     }
@@ -629,7 +630,7 @@ PVR_ERROR Jellyfin::DeleteTimer(const PVR_TIMER &timer) {
 int Jellyfin::RESTDeleteTimer(std::string id)
 {	
 
-  std::string strUrl = StringUtils::Format("%s/LiveTV/Timers/%s", m_strBaseUrl.c_str(), id.c_str());
+  std::string strUrl = StringUtils::Format("%s/LiveTV/Timers/%s", m_strBaseHTTPSUrl.c_str(), id.c_str());
   
   int retval = this->rest.Delete(strUrl, "", m_strToken);
   if (retval >= 0)
@@ -737,7 +738,7 @@ int Jellyfin::RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value
   strParams= StringUtils::Format("?ChannelIds=%s&fields=Overview", id.c_str());
   
   
-  std::string strUrl = m_strBaseUrl + URI_REST_EPG;
+  std::string strUrl = m_strBaseHTTPSUrl + URI_REST_EPG;
   int retval = this->rest.Get(strUrl, strParams, response,m_strToken);
   if (retval >= 0)
   {
@@ -762,14 +763,14 @@ int Jellyfin::RESTGetEpg(std::string id, time_t iStart, time_t iEnd, Json::Value
 std::string Jellyfin::GetStreamUrl(std::string id,std::string params)
 {
   std::string strTmp;
-  strTmp = StringUtils::Format("%s/Videos/%s/stream%s", m_strBaseUrl.c_str(), id.c_str(), params.c_str());
+  strTmp = StringUtils::Format("%s/Videos/%s/stream%s", m_strBaseHTTPUrl.c_str(), id.c_str(), params.c_str());
   return strTmp;
 }
 
 std::string Jellyfin::GetChannelLogo(std::string params)
 {
   std::string strTmp;
-  strTmp = StringUtils::Format("%s/Items/%s/Images/Primary", m_strBaseUrl.c_str(), params.c_str());
+  strTmp = StringUtils::Format("%s/Items/%s/Images/Primary", m_strBaseHTTPUrl.c_str(), params.c_str());
   return strTmp;
 }
 
