@@ -28,6 +28,10 @@ msgctxt "#30004"
 msgid "HTTPS Port"
 msgstr ""
 
+msgctxt "#30005"
+msgid "API Path"
+msgstr ""
+
 msgctxt "#30002"
 msgid "Username"
 msgstr ""

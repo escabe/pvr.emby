@@ -40,6 +40,7 @@ extern std::string                   g_strUsername;
 extern std::string                   g_strPassword;
 extern std::string                   g_strLiveTVParameters;
 extern std::string                   g_strRecordingParameters;
+extern std::string                   g_strPath;
 
 extern ADDON::CHelper_libXBMC_addon *XBMC;
 extern CHelper_libXBMC_pvr          *PVR;

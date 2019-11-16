@@ -49,6 +49,7 @@ int         g_iPortHTTPS          = DEFAULT_HTTPS_PORT;
 std::string g_strAuth             = DEFAULT_AUTH;
 std::string g_strUsername         = "";
 std::string g_strPassword         = "";
+std::string g_strPath             = "";
 
 std::string g_strBaseUrl          = "";
 int         g_iStartNumber        = 1;
@@ -142,6 +143,16 @@ void ADDON_ReadSettings(void)
   else 
   {
 	  g_strPassword = "";
+  }  
+  buffer[0] = 0; /* Set the end of string */
+
+  if (XBMC->GetSetting("path", buffer))
+  {
+	  g_strPath = buffer;
+  }   
+  else 
+  {
+	  g_strPath = "";
   }  
   buffer[0] = 0; /* Set the end of string */
 
@@ -295,6 +306,16 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
       return ADDON_STATUS_NEED_RESTART;
     }    
   }
+  else if (str == "path")
+  {
+    string strNewPath = (const char*)settingValue;
+    if (strNewPath != g_strPath)
+    {
+      g_strPath = strNewPath;
+      XBMC->Log(LOG_INFO, "%s - Changed Setting 'path' from %s to %s", __FUNCTION__, g_strPath.c_str(), (const char*)settingValue);
+      return ADDON_STATUS_NEED_RESTART;
+    }    
+  }  
   else if (str == "livetvparameters")
   {
     string strNew = (const char*)settingValue;

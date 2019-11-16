@@ -90,8 +90,8 @@ bool Jellyfin::Open()
   XBMC->Log(LOG_NOTICE, "%s - HTTPSPort: '%d'", __FUNCTION__, m_iPortHTTPS);
 
   // Set base urls
-  m_strBaseHTTPUrl = StringUtils::Format("http://%s:%u", g_strHostname.c_str(), m_iPortHTTP);
-  m_strBaseHTTPSUrl = StringUtils::Format("https://%s:%u", g_strHostname.c_str(), m_iPortHTTPS);
+  m_strBaseHTTPUrl = StringUtils::Format("http://%s:%u%s", g_strHostname.c_str(), m_iPortHTTP,g_strPath.c_str());
+  m_strBaseHTTPSUrl = StringUtils::Format("https://%s:%u%s", g_strHostname.c_str(), m_iPortHTTPS,g_strPath.c_str());
 
 // Perform login
   m_bIsConnected = Login();

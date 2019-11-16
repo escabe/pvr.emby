@@ -192,7 +192,7 @@ private:
   std::string                       m_strPassword;
   std::string                       m_strToken;
   std::string                       m_strUserId;
-
+  
   std::string                       m_strLiveTVParameters;
   std::string                       m_strRecordingParameters;
 

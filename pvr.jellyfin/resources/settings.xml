@@ -7,8 +7,9 @@
     <setting id="httpsport" type="number" label="30004" default="8920"/>
     <setting id="username" type="text" label="30002" default="" />
     <setting id="password" type="text" label="30003" default="" option="hidden" />
+    <setting id="path" type="text" label="30005" default="/jellyfin" />
     <setting label="30010" type="lsep"/>
-    <setting id="livetvparameters" type="text" label="30011" default="?static=true" />
-    <setting id="recordingparameters" type="text" label="30012" default=".ts" />
+    <setting id="livetvparameters" type="text" label="30011" default=".ts?static=true" />
+    <setting id="recordingparameters" type="text" label="30012" default=".ts?static=true" />
   </category>  
 </settings>
