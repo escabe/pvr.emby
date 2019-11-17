@@ -12,3 +12,15 @@ script:
   - mkdir $TRAVIS_BUILD_DIR/output
   - docker run -v $TRAVIS_BUILD_DIR/output:/output escabe/pvr.jellyfin-build:18.1
   
+deploy:
+  provider: releases
+  api_key: 
+    secure: arXwIQsFapu9M2PJ+dSRPxNiKNl0C8ghikVTOUCLbZQfYtFVWg+OL0rxms9UodcL6k68tEPNPLFVBEKjASXxpm5r0IT/UDqAjZB5F5rJ0djQdhkUWnU+OsXL0ihLvQ2Fu92JOe7mgXhymfOfFsosZhRP+QL9LiBz4J6trI08p8ekSQk+xrID9dbbil3JN1Z1G6KslJPhZ2Dq3F2kALloKQxAmi9eXn/SGhKkHc8UXDskER3tmSjtwSZRtqBRAs/8Ccg6SWsI0rnIdMuqCxiwre7edrBAWnzQEoqaLRC7E+Z0j+DPn8ml68FEKCcSCQbU+S7xOX4lDOU+6HfkKG1G0OI/7L58Q06eZ7kOqg+M/r6dKqc2izaOZSCASksrBijy6hM0512wHD7ORYpue+K+VNEUDaPqPJT2z+xmlJQVeYugxanHeNKd2mTB2/iWeO0b8w2sDvF9qBAPXR2k5zqqWoI0GmMuTLESnXHTlR86ThGuEEhDZDbjj/SP/t9tWPP4ymfN6bp0XX5xV4tgN1j9nYD8h8vgU9+C2AeNjZwZE/KwtYBXMSdGYnaH4bk1B6sfrdCCvdCZ8q+mGzYLN4s30fw3oB7O7grSffhNqM2hGHilC//T9I+hBkhprGivDkzYejXoTn8ksk2kcgPYT4keUyzU7FUIiKiDTuexih0W6VQ=
+  overwrite: true
+  file:
+    - "output/pvr.jellyfin-arm64.zip"
+    - "output/pvr.jellyfin-arm.zip"
+    - "output/pvr.jellyfin-rpi2.zip"
+  skip_cleanup: true
+  on:
+    tags: true
