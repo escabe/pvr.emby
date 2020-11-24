@@ -10,7 +10,6 @@ public:
   ADDON_STATUS SetSetting(const std::string &settingName, const kodi::CSettingValue &settingValue) override;
   ADDON_STATUS Create() override;
 
-
   PVR_ERROR GetBackendName(std::string& name) override;
   PVR_ERROR GetBackendVersion(std::string& version) override;
   
@@ -28,5 +27,6 @@ private:
   std::string baseUrl;
   bool verifyPeer = true;
   bool Login();
+  bool authenticated = false;
   void ReadSettings();
 };
