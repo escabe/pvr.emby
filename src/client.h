@@ -25,8 +25,10 @@ private:
   std::string username;
   std::string password;
   std::string baseUrl;
+  std::map<unsigned int,std::string> channelMap;
   bool verifyPeer = true;
   bool Login();
   bool authenticated = false;
+  int numChannels = -1;
   void ReadSettings();
 };

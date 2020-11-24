@@ -130,6 +130,7 @@ int CJellyfinRest::httpRequest(const std::string& command, const std::string& ar
 		if (hFile.CURLOpen())
 		{
 			std::string result;
+			result.clear();
 			char buffer[1024];
 			while (hFile.Read(buffer, 1024))
 				result.append(buffer);

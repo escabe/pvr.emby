@@ -1,6 +1,7 @@
 #include "client.h"
 #include <kodi/General.h>
 #include <json/json.h>
+#include <utility>
 
 CPVRJellyfin::CPVRJellyfin() {
 }
@@ -45,7 +46,7 @@ bool CPVRJellyfin::Login() {
   data["pw"] = password;
   std::string strdata = fastWriter.write(data);
   // Perform the request
-  std::string strUrl = baseUrl + "Users/AuthenticateByName";
+  std::string strUrl = baseUrl + "/Users/AuthenticateByName";
   retval = this->rest.Post(strUrl, strdata, response);
   if (retval != E_FAILED)
   {
@@ -80,16 +81,33 @@ PVR_ERROR CPVRJellyfin::GetBackendVersion(std::string& version)
  
 PVR_ERROR CPVRJellyfin::GetChannelsAmount(int& amount)
 {
-  amount = 1;
+  amount = numChannels;
   return PVR_ERROR_NO_ERROR;
 }
  
 PVR_ERROR CPVRJellyfin::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultSet& results)
 {
-  kodi::addon::PVRChannel kodiChannel;
-  kodiChannel.SetUniqueId(1);
-  kodiChannel.SetChannelName("My Test Channel");
-  results.Add(kodiChannel);
+
+  channelMap.clear();
+
+  Json::Value data;
+  if (rest.Get(baseUrl + "/LiveTv/Channels", "", data, token) == 0) {
+    data = data["Items"];
+    numChannels = data.size();
+    for (unsigned int i = 0; i < data.size(); i++) {
+      Json::Value entry = data[i];
+      kodi::addon::PVRChannel kodiChannel;
+      unsigned int channelNumber = std::stoul(entry["ChannelNumber"].asString());
+      kodiChannel.SetUniqueId(channelNumber);
+      kodiChannel.SetChannelNumber(channelNumber);
+      kodiChannel.SetChannelName(entry["Name"].asString());
+      channelMap.insert(std::make_pair(channelNumber,entry["Id"].asString()));
+      results.Add(kodiChannel);
+    }
+    
+  } else {
+    return PVR_ERROR_SERVER_ERROR;
+  }
   return PVR_ERROR_NO_ERROR;
 }
  
