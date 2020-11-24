@@ -17,20 +17,12 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgctxt "#30000"
-msgid "Hostname or IP address"
+msgid "Full Base URL"
 msgstr ""
 
 msgctxt "#30001"
-msgid "HTTP Port"
-msgstr ""
-
-msgctxt "#30004"
-msgid "HTTPS Port"
-msgstr ""
-
-msgctxt "#30005"
-msgid "API Path"
-msgstr ""
+msgid "Verify Peer"
+msgstr "Disable to accept self-signed server HTTPS certificates"
 
 msgctxt "#30002"
 msgid "Username"

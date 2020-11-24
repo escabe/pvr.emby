@@ -11,6 +11,14 @@ CPVRJellyfin::~CPVRJellyfin() {
 
 }
 
+ADDON_STATUS CPVRJellyfin::Create() {
+  return ADDON_STATUS_NEED_SETTINGS;
+}
+
+ADDON_STATUS CPVRJellyfin::SetSetting(const std::string &settingName, const kodi::CSettingValue &settingValue) {
+
+}
+
 bool CPVRJellyfin::Login() {
   int retval;
   

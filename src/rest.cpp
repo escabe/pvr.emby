@@ -3,7 +3,7 @@
 
 #include <kodi/Filesystem.h>
 
-int cJellyfinRest::Get(const std::string& command, const std::string& arguments, Json::Value& json_response, const std::string& token)
+int CJellyfinRest::Get(const std::string& command, const std::string& arguments, Json::Value& json_response, const std::string& token)
 {
 	std::string response;
 	int retval;
@@ -35,7 +35,7 @@ int cJellyfinRest::Get(const std::string& command, const std::string& arguments,
 	return retval;
 }
 
-int cJellyfinRest::Post(const std::string& command, const std::string& arguments, Json::Value& json_response, const std::string& token)
+int CJellyfinRest::Post(const std::string& command, const std::string& arguments, Json::Value& json_response, const std::string& token)
 {
 	std::string response;
 	int retval;
@@ -68,7 +68,7 @@ int cJellyfinRest::Post(const std::string& command, const std::string& arguments
 }
 
 
-int cJellyfinRest::Delete(const std::string& strUrl, const std::string& arguments, const std::string& token)
+int CJellyfinRest::Delete(const std::string& strUrl, const std::string& arguments, const std::string& token)
 {
 	std::string response;
 	int retval;
@@ -76,7 +76,8 @@ int cJellyfinRest::Delete(const std::string& strUrl, const std::string& argument
 	hFile.CURLCreate(strUrl);
 	hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_PROTOCOL,"customrequest","DELETE");
 	hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_HEADER,"Authorization",this->getAuthorization().c_str());
-	hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_PROTOCOL,"verifypeer","false");
+	if (!verifyPeer)
+		hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_PROTOCOL,"verifypeer","false");
 	if (!token.empty())
 		hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_HEADER,"X-MediaBrowser-Token",token.c_str());
 	if (hFile.CURLOpen())
@@ -87,7 +88,7 @@ int cJellyfinRest::Delete(const std::string& strUrl, const std::string& argument
 	return retval;
 }
 
-int cJellyfinRest::httpRequest(const std::string& command, const std::string& arguments, const bool write, std::string& json_response, const std::string& token)
+int CJellyfinRest::httpRequest(const std::string& command, const std::string& arguments, const bool write, std::string& json_response, const std::string& token)
 {
 	//P8PLATFORM::CLockObject critsec(communication_mutex);		
 	std::string strUrl = command;
@@ -97,7 +98,8 @@ int cJellyfinRest::httpRequest(const std::string& command, const std::string& ar
 		hFile.CURLCreate(strUrl);
 		std::string data = base64_encode(arguments.c_str(),arguments.length());
 		hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_PROTOCOL,"postdata",data);
-		hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_PROTOCOL,"verifypeer","false");
+		if (!verifyPeer)
+			hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_PROTOCOL,"verifypeer","false");
 		hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_HEADER,"Authorization",this->getAuthorization());
 		hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_HEADER,"Content-Type","application/json");
 		if (!token.empty())
@@ -120,7 +122,8 @@ int cJellyfinRest::httpRequest(const std::string& command, const std::string& ar
 		kodi::vfs::CFile hFile;
 		hFile.CURLCreate(strUrl);
 		hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_HEADER,"Authorization",this->getAuthorization());
-		hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_PROTOCOL,"verifypeer","false");
+		if (!verifyPeer)
+			hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_PROTOCOL,"verifypeer","false");
 		if (!token.empty())
 			hFile.CURLAddOption(CURLOptiontype::ADDON_CURL_OPTION_HEADER,"X-MediaBrowser-Token",token);
 
@@ -140,11 +143,15 @@ int cJellyfinRest::httpRequest(const std::string& command, const std::string& ar
 	return -1;
 }
 
-std::string cJellyfinRest::getAuthorization() {
+std::string CJellyfinRest::getAuthorization() {
 	
 	if (this->authorization.empty()) {
 		// Form full string
 		this->authorization = kodi::tools::StringUtils::Format("MediaBrowser Client=\"Kodi PVR\", Device=\"Kodi\", DeviceId=\"%s\", Version=\"0.1.0\"","7f8217cd-9ebd-4c3d-824a-f58df585a323");
 	}
 	return this->authorization;
+}
+
+void CJellyfinRest::SetVerifyPeer(bool val) {
+	verifyPeer = val;
 }
