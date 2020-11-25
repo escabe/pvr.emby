@@ -18,10 +18,11 @@ public:
 	int Delete(const std::string& command, const std::string& arguments, const std::string& token = std::string());
 
 	void SetVerifyPeer(bool val);
-
+	void SetUUID(std::string newGuid);
 
 private:
 	std::string authorization;
+	std::string uuid = "7f8217cd-9ebd-4c3d-824a-f58df585a323";
 	std::string getAuthorization();
 	bool verifyPeer = true;
 	int httpRequest(const std::string& command, const std::string& arguments, const bool write, std::string& json_response, const std::string& token);

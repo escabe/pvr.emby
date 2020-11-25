@@ -1,7 +1,9 @@
 #include "client.h"
 #include <kodi/General.h>
+#include <kodi/Filesystem.h>
 #include <json/json.h>
 #include <utility>
+#include <chrono>
 
 CPVRJellyfin::CPVRJellyfin() {
 }
@@ -26,9 +28,44 @@ ADDON_STATUS CPVRJellyfin::Create()  {
   }
   if (Login()) {
     authenticated = true;
+    GetServerInfo();
+    SetUUID();
     return ADDON_STATUS_OK;
   }
   return ADDON_STATUS_NEED_SETTINGS;
+}
+
+void CPVRJellyfin::SetUUID() {
+  std::string path = UserPath();
+
+  if (!kodi::vfs::DirectoryExists(path))
+    kodi::vfs::CreateDirectory(path);
+    
+  std::string uuid;
+
+  path.append("/uuid");
+  if (kodi::vfs::FileExists(path)) {
+    kodi::vfs::CFile file;
+    file.OpenFile(path);
+    file.ReadLine(uuid);
+    file.Close();
+  } else {
+    GenerateUuid(uuid);
+    kodi::vfs::CFile file;
+    file.OpenFileForWrite(path, true);
+    file.Write(uuid.c_str(),uuid.length());
+    file.Close();
+  }
+  rest.SetUUID(uuid);
+  
+}
+
+void CPVRJellyfin::GetServerInfo() {
+  Json::Value response;  
+  if (rest.Get(baseUrl + "/System/Info", "", response, token) == E_SUCCESS) {
+    backendName = response["ServerName"].asString();
+    backendVersion = response["Version"].asString();
+  }
 }
 
 ADDON_STATUS CPVRJellyfin::SetSetting(const std::string &settingName, const kodi::CSettingValue &settingValue) {
@@ -69,13 +106,13 @@ PVR_ERROR CPVRJellyfin::GetCapabilities(kodi::addon::PVRCapabilities& capabiliti
  
 PVR_ERROR CPVRJellyfin::GetBackendName(std::string& name)
 {
-  name = "My special PVR client";
+  name = backendName;
   return PVR_ERROR_NO_ERROR;
 }
  
 PVR_ERROR CPVRJellyfin::GetBackendVersion(std::string& version)
 {
-  version = "1.0.0";
+  version = backendVersion;
   return PVR_ERROR_NO_ERROR;
 }
  
@@ -91,7 +128,7 @@ PVR_ERROR CPVRJellyfin::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultS
   channelMap.clear();
 
   Json::Value data;
-  if (rest.Get(baseUrl + "/LiveTv/Channels", "", data, token) == 0) {
+  if (rest.Get(baseUrl + "/LiveTv/Channels", "", data, token) == E_SUCCESS) {
     data = data["Items"];
     numChannels = data.size();
     for (unsigned int i = 0; i < data.size(); i++) {
@@ -105,12 +142,41 @@ PVR_ERROR CPVRJellyfin::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultS
       channelMap.insert(std::make_pair(channelNumber,entry["Id"].asString()));
       results.Add(kodiChannel);
     }
-    
   } else {
     return PVR_ERROR_SERVER_ERROR;
   }
   return PVR_ERROR_NO_ERROR;
 }
  
+ void CPVRJellyfin::GenerateUuid(std::string& uuid)
+{
+  using namespace std::chrono;
+
+  int64_t seed_value =
+      duration_cast<milliseconds>(
+          time_point_cast<milliseconds>(high_resolution_clock::now()).time_since_epoch())
+          .count();
+  seed_value = seed_value % 1000000000;
+  srand((unsigned int)seed_value);
+
+  //fill in uuid string from a template
+  std::string template_str = "xxxx-xx-xx-xx-xxxxxx";
+  for (size_t i = 0; i < template_str.size(); i++)
+  {
+    if (template_str[i] != '-')
+    {
+      double a1 = rand();
+      double a3 = RAND_MAX;
+      unsigned char ch = (unsigned char)(a1 * 255 / a3);
+      char buf[16];
+      sprintf(buf, "%02x", ch);
+      uuid += buf;
+    }
+    else
+    {
+      uuid += '-';
+    }
+  }
+}
 
 ADDONCREATOR(CPVRJellyfin)

@@ -25,10 +25,15 @@ private:
   std::string username;
   std::string password;
   std::string baseUrl;
+  std::string backendName = "";
+  std::string backendVersion = "";
   std::map<unsigned int,std::string> channelMap;
   bool verifyPeer = true;
   bool Login();
   bool authenticated = false;
   int numChannels = -1;
   void ReadSettings();
+  void GetServerInfo();
+  void SetUUID();
+  void GenerateUuid(std::string& uuid);
 };

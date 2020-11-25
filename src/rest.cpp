@@ -147,11 +147,15 @@ std::string CJellyfinRest::getAuthorization() {
 	
 	if (this->authorization.empty()) {
 		// Form full string
-		this->authorization = kodi::tools::StringUtils::Format("MediaBrowser Client=\"Kodi PVR\", Device=\"Kodi\", DeviceId=\"%s\", Version=\"0.1.0\"","7f8217cd-9ebd-4c3d-824a-f58df585a323");
+		this->authorization = kodi::tools::StringUtils::Format("MediaBrowser Client=\"Kodi PVR\", Device=\"Kodi\", DeviceId=\"%s\", Version=\"0.1.0\"",uuid.c_str());
 	}
 	return this->authorization;
 }
 
 void CJellyfinRest::SetVerifyPeer(bool val) {
 	verifyPeer = val;
+}
+
+void CJellyfinRest::SetUUID(std::string newGuid) {
+	uuid = newGuid;
 }
