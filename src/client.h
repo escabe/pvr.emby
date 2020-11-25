@@ -20,6 +20,8 @@ public:
 
   PVR_ERROR GetChannelStreamProperties(const kodi::addon::PVRChannel &channel, std::vector<kodi::addon::PVRStreamProperty> &properties) override;
 
+  PVR_ERROR GetEPGForChannel(int channelUid, time_t start, time_t end, kodi::addon::PVREPGTagsResultSet &results) override;
+
 
 
 private:
@@ -41,4 +43,5 @@ private:
   void GetServerInfo();
   void SetUUID();
   void GenerateUuid(std::string& uuid);
+  time_t ISO8601ToTime(const char* date);
 };

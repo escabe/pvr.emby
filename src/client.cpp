@@ -102,6 +102,7 @@ PVR_ERROR CPVRJellyfin::GetCapabilities(kodi::addon::PVRCapabilities& capabiliti
   if (!authenticated)
     return PVR_ERROR_SERVER_ERROR;
   capabilities.SetSupportsTV(true);
+  capabilities.SetSupportsEPG(true);
   return PVR_ERROR_NO_ERROR;
 }
  
@@ -153,8 +154,41 @@ PVR_ERROR CPVRJellyfin::GetChannelStreamProperties(const kodi::addon::PVRChannel
   std::string channelId = channelMap[channel.GetUniqueId()];
   std::string streamURL = baseUrl + "/Videos/" + channelId + "/stream" + livetvparameters;
   properties.emplace_back(PVR_STREAM_PROPERTY_STREAMURL,streamURL);
+  return PVR_ERROR_NO_ERROR;
 }
 
+
+PVR_ERROR CPVRJellyfin::GetEPGForChannel(int channelUid, time_t start, time_t end, kodi::addon::PVREPGTagsResultSet &results) {
+  struct tm * timeinfo;
+  timeinfo = gmtime(&start);
+  char buffer1[80], buffer2[80];
+  strftime(buffer1,80,"%FT%TZ",timeinfo);
+  timeinfo = gmtime(&end);
+  strftime(buffer2,80,"%FT%TZ",timeinfo);
+
+  std::string params = "?ChannelIds=" + channelMap[channelUid] +
+    "&fields=Overview&MinStartDate=" + buffer1 + "&MaxStartDate=" + buffer2;
+  
+
+  Json::Value data;
+
+  if (rest.Get(baseUrl + "/LiveTv/Programs",params,data,token) == E_SUCCESS) {
+    data = data["Items"];
+    for (unsigned int i = 0; i < data.size(); i++) {
+      Json::Value entry = data[i];
+      kodi::addon::PVREPGTag tag;
+      tag.SetUniqueChannelId(channelUid);
+      tag.SetUniqueBroadcastId(kodi::tools::StringUtils::ReturnDigits(entry["Id"].asString()));
+      tag.SetTitle(entry["Name"].asString());
+      tag.SetStartTime(ISO8601ToTime(entry["StartDate"].asCString()));
+      tag.SetEndTime(ISO8601ToTime(entry["EndDate"].asCString()));
+      tag.SetPlot(entry["Overview"].asString());
+      results.Add(tag);
+    }
+    return PVR_ERROR_NO_ERROR;
+  }
+  return PVR_ERROR_UNKNOWN;
+}
 
 void CPVRJellyfin::GenerateUuid(std::string& uuid)
 {
@@ -185,6 +219,20 @@ void CPVRJellyfin::GenerateUuid(std::string& uuid)
       uuid += '-';
     }
   }
+}
+
+time_t CPVRJellyfin::ISO8601ToTime(const char* date) {
+  int y,M,d,h,m;
+  float s;
+  sscanf(date, "%d-%d-%dT%d:%d:%fZ", &y, &M, &d, &h, &m, &s);
+  tm time;
+  time.tm_year = y - 1900; // Year since 1900
+  time.tm_mon = M - 1;     // 0-11
+  time.tm_mday = d;        // 1-31
+  time.tm_hour = h;        // 0-23
+  time.tm_min = m;         // 0-59
+  time.tm_sec = (int)s;    // 0-61 (0-60 in C++11)
+  return timegm(&time);
 }
 
 ADDONCREATOR(CPVRJellyfin)
