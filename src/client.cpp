@@ -101,6 +101,7 @@ PVR_ERROR CPVRJellyfin::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultS
       kodiChannel.SetUniqueId(channelNumber);
       kodiChannel.SetChannelNumber(channelNumber);
       kodiChannel.SetChannelName(entry["Name"].asString());
+      kodiChannel.SetIconPath(baseUrl + "/Items/" + entry["Id"].asString() + "/Images/Primary");
       channelMap.insert(std::make_pair(channelNumber,entry["Id"].asString()));
       results.Add(kodiChannel);
     }

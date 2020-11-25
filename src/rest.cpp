@@ -109,9 +109,9 @@ int CJellyfinRest::httpRequest(const std::string& command, const std::string& ar
 		{
 			std::string result;
 			result.clear();
-			char buffer[1024];
-			while (hFile.Read(buffer, 1024))
-				result.append(buffer);
+			std::string line;
+			while (hFile.ReadLine(line))
+				result.append(line);
 			json_response = result;
 			hFile.Close();
 			return 0;
@@ -131,10 +131,9 @@ int CJellyfinRest::httpRequest(const std::string& command, const std::string& ar
 		{
 			std::string result;
 			result.clear();
-			char buffer[1024];
-			while (hFile.Read(buffer, 1024))
-				result.append(buffer);
-
+			std::string line;
+			while (hFile.ReadLine(line))
+				result.append(line);
 			hFile.Close();
 			json_response = result;
 			return 0;
