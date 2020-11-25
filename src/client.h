@@ -18,6 +18,10 @@ public:
   PVR_ERROR GetChannelsAmount(int& amount) override;
   PVR_ERROR GetChannels(bool bRadio, kodi::addon::PVRChannelsResultSet& results) override;
 
+  PVR_ERROR GetChannelStreamProperties(const kodi::addon::PVRChannel &channel, std::vector<kodi::addon::PVRStreamProperty> &properties) override;
+
+
+
 private:
   CJellyfinRest rest;
   std::string token;
@@ -27,6 +31,7 @@ private:
   std::string baseUrl;
   std::string backendName = "";
   std::string backendVersion = "";
+  std::string livetvparameters;
   std::map<unsigned int,std::string> channelMap;
   bool verifyPeer = true;
   bool Login();

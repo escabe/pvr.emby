@@ -17,6 +17,7 @@ void CPVRJellyfin::ReadSettings() {
   password = kodi::GetSettingString("password","");
   baseUrl = kodi::GetSettingString("baseUrl","");
   verifyPeer = kodi::GetSettingBoolean("verifyPeer", true);
+  livetvparameters = kodi::GetSettingString("livetvparameters","");
   rest.SetVerifyPeer(verifyPeer);
 }
 
@@ -147,8 +148,15 @@ PVR_ERROR CPVRJellyfin::GetChannels(bool bRadio, kodi::addon::PVRChannelsResultS
   }
   return PVR_ERROR_NO_ERROR;
 }
- 
- void CPVRJellyfin::GenerateUuid(std::string& uuid)
+
+PVR_ERROR CPVRJellyfin::GetChannelStreamProperties(const kodi::addon::PVRChannel &channel, std::vector<kodi::addon::PVRStreamProperty> &properties) {
+  std::string channelId = channelMap[channel.GetUniqueId()];
+  std::string streamURL = baseUrl + "/Videos/" + channelId + "/stream" + livetvparameters;
+  properties.emplace_back(PVR_STREAM_PROPERTY_STREAMURL,streamURL);
+}
+
+
+void CPVRJellyfin::GenerateUuid(std::string& uuid)
 {
   using namespace std::chrono;
 
